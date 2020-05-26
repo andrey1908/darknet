@@ -1288,7 +1288,7 @@ data load_data_detection(int n, char **paths, int m, int w, int h, int c, int bo
                     int bot = (b.y + b.h / 2.)*ai.h;
                     draw_box_width(tmp_ai, left, top, right, bot, 1, rgb[0], rgb[1], rgb[2]); // 3 channels RGB
                     if (alphabet) {
-                        char* labelstr[1000];
+                        char labelstr[1000];
                         sprintf(labelstr, "%.1f", b.w * ai.w * b.h * ai.h);
                         image label = get_label_v3(alphabet, labelstr, h * .02);
                         draw_label(tmp_ai, top-1, left, label, rgb);
@@ -1630,7 +1630,7 @@ void *load_threads(void *ptr)
         alphabet = load_alphabet();
     }
     if (args.show_imgs && (args.threads > 1)) {
-        printf("If show_imgs, use 1 thread.\n");
+        printf("If show_imgs, use 1 thread. Or make sure that alphabet is okey with several threads.\n");
         exit(0);
     }
 
