@@ -4,12 +4,14 @@
 #include "dark_cuda.h"
 #include "box.h"
 #include "http_stream.h"
+#include "image.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 extern int check_mistakes;
+static image **alphabet = NULL;
 
 #define NUMCHARS 37
 
@@ -358,7 +360,7 @@ void fill_truth_region(char *path, float *truth, int classes, int num_boxes, int
 }
 
 int fill_truth_detection(const char *path, int num_boxes, float *truth, int classes, int flip, float dx, float dy, float sx, float sy,
-    int net_w, int net_h)
+    int net_w, int net_h, int min_box_area)
 {
     char labelpath[4096];
     replace_image_to_label(path, labelpath);
@@ -398,6 +400,10 @@ int fill_truth_detection(const char *path, int num_boxes, float *truth, int clas
         if ((w < lowest_w || h < lowest_h)) {
             //sprintf(buff, "echo %s \"Very small object: w < lowest_w OR h < lowest_h\" >> bad_label.list", labelpath);
             //system(buff);
+            ++sub;
+            continue;
+        }
+        if ((w * net_w * h * net_h < (float)min_box_area)) {
             ++sub;
             continue;
         }
@@ -998,7 +1004,7 @@ void blend_truth_mosaic(float *new_truth, int boxes, float *old_truth, int w, in
 #include "http_stream.h"
 
 data load_data_detection(int n, char **paths, int m, int w, int h, int c, int boxes, int classes, int use_flip, int use_gaussian_noise, int use_blur, int use_mixup,
-    float jitter, float resize, float hue, float saturation, float exposure, int mini_batch, int track, int augment_speed, int letter_box, int show_imgs)
+    float jitter, float resize, float hue, float saturation, float exposure, int mini_batch, int track, int augment_speed, int letter_box, int show_imgs, int min_box_area)
 {
     const int random_index = random_gen();
     c = c ? c : 3;
@@ -1130,7 +1136,7 @@ data load_data_detection(int n, char **paths, int m, int w, int h, int c, int bo
                 pbot += rand_precalc_random(min_rdh, max_rdh, resize_r2);
             }
 
-            //printf("\n pleft = %d, pright = %d, ptop = %d, pbot = %d, ow = %d, oh = %d \n", pleft, pright, ptop, pbot, ow, oh);
+            printf("\n pleft = %d, pright = %d, ptop = %d, pbot = %d, ow = %d, oh = %d \n", pleft, pright, ptop, pbot, ow, oh);
 
             //float scale = rand_precalc_random(.25, 2, r_scale); // unused currently
 
@@ -1188,7 +1194,7 @@ data load_data_detection(int n, char **paths, int m, int w, int h, int c, int bo
             float dy = ((float)ptop / oh) / sy;
 
 
-            int min_w_h = fill_truth_detection(filename, boxes, truth, classes, flip, dx, dy, 1. / sx, 1. / sy, w, h);
+            int min_w_h = fill_truth_detection(filename, boxes, truth, classes, flip, dx, dy, 1. / sx, 1. / sy, w, h, min_box_area);
 
             if ((min_w_h / 8) < blur && blur > 1) blur = min_w_h / 8;   // disable blur if one of the objects is too small
 
@@ -1271,6 +1277,7 @@ data load_data_detection(int n, char **paths, int m, int w, int h, int c, int bo
                 char buff[1000];
                 //sprintf(buff, "aug_%d_%d_%s_%d", random_index, i, basecfg((char*)filename), random_gen());
                 sprintf(buff, "aug_%d_%d_%d", random_index, i, random_gen());
+                const float rgb[3] = {150., 100., 50.};
                 int t;
                 for (t = 0; t < boxes; ++t) {
                     box b = float_to_box_stride(d.y.vals[i] + t*(4 + 1), 1);
@@ -1279,7 +1286,14 @@ data load_data_detection(int n, char **paths, int m, int w, int h, int c, int bo
                     int right = (b.x + b.w / 2.)*ai.w;
                     int top = (b.y - b.h / 2.)*ai.h;
                     int bot = (b.y + b.h / 2.)*ai.h;
-                    draw_box_width(tmp_ai, left, top, right, bot, 1, 150, 100, 50); // 3 channels RGB
+                    draw_box_width(tmp_ai, left, top, right, bot, 1, rgb[0], rgb[1], rgb[2]); // 3 channels RGB
+                    if (alphabet) {
+                        char* labelstr[1000];
+                        sprintf(labelstr, "%.1f", b.w * ai.w * b.h * ai.h);
+                        image label = get_label_v3(alphabet, labelstr, h * .02);
+                        draw_label(tmp_ai, top-1, left, label, rgb);
+                        free_image(label);
+                    }
                 }
 
                 save_image(tmp_ai, buff);
@@ -1314,7 +1328,7 @@ void blend_images(image new_img, float alpha, image old_img, float beta)
 }
 
 data load_data_detection(int n, char **paths, int m, int w, int h, int c, int boxes, int classes, int use_flip, int gaussian_noise, int use_blur, int use_mixup,
-    float jitter, float resize, float hue, float saturation, float exposure, int mini_batch, int track, int augment_speed, int letter_box, int show_imgs)
+    float jitter, float resize, float hue, float saturation, float exposure, int mini_batch, int track, int augment_speed, int letter_box, int show_imgs, int min_box_area)
 {
     const int random_index = random_gen();
     c = c ? c : 3;
@@ -1456,7 +1470,7 @@ data load_data_detection(int n, char **paths, int m, int w, int h, int c, int bo
             distort_image(sized, dhue, dsat, dexp);
             //random_distort_image(sized, hue, saturation, exposure);
 
-            fill_truth_detection(filename, boxes, truth, classes, flip, dx, dy, 1. / sx, 1. / sy, w, h);
+            fill_truth_detection(filename, boxes, truth, classes, flip, dx, dy, 1. / sx, 1. / sy, w, h, min_box_area);
 
             if (i_mixup) {
                 image old_img = sized;
@@ -1529,7 +1543,7 @@ void *load_thread(void *ptr)
         *a.d = load_data_region(a.n, a.paths, a.m, a.w, a.h, a.num_boxes, a.classes, a.jitter, a.hue, a.saturation, a.exposure);
     } else if (a.type == DETECTION_DATA){
         *a.d = load_data_detection(a.n, a.paths, a.m, a.w, a.h, a.c, a.num_boxes, a.classes, a.flip, a.gaussian_noise, a.blur, a.mixup, a.jitter, a.resize,
-            a.hue, a.saturation, a.exposure, a.mini_batch, a.track, a.augment_speed, a.letter_box, a.show_imgs);
+            a.hue, a.saturation, a.exposure, a.mini_batch, a.track, a.augment_speed, a.letter_box, a.show_imgs, a.min_box_area);
     } else if (a.type == SWAG_DATA){
         *a.d = load_data_swag(a.paths, a.n, a.classes, a.jitter);
     } else if (a.type == COMPARE_DATA){
@@ -1612,6 +1626,13 @@ void *load_threads(void *ptr)
             if (pthread_create(&threads[i], 0, run_thread_loop, ptr)) error("Thread creation failed");
         }
     }
+    if (!alphabet && args.show_imgs) {
+        alphabet = load_alphabet();
+    }
+    if (args.show_imgs && (args.threads > 1)) {
+        printf("If show_imgs, use 1 thread.\n");
+        exit(0);
+    }
 
     for (i = 0; i < args.threads; ++i) {
         args.d = buffers + i;
@@ -1665,6 +1686,17 @@ void free_load_threads(void *ptr)
         free(threads);
         threads = NULL;
         custom_atomic_store_int(&flag_exit, 0);
+    }
+    if (alphabet) {
+        int i, j;
+        const int nsize = 8;
+        for (j = 0; j < nsize; ++j) {
+            for (i = 32; i < 127; ++i) {
+                free_image(alphabet[j][i]);
+            }
+            free(alphabet[j]);
+        }
+        free(alphabet);
     }
 }
 

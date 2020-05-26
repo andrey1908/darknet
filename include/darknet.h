@@ -713,6 +713,7 @@ typedef struct network {
     float adversarial_lr;
     float max_chart_loss;
     int letter_box;
+    int min_box_area;
     float angle;
     float aspect;
     float exposure;
@@ -889,6 +890,7 @@ typedef struct load_args {
     int track;
     int augment_speed;
     int letter_box;
+    int min_box_area;
     int show_imgs;
     int dontuse_opencv;
     float jitter;
