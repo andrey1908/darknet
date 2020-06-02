@@ -289,6 +289,7 @@ void update_network(network net)
     float rate = get_current_rate(net);
     for(i = 0; i < net.n; ++i){
         layer l = net.layers[i];
+        if (l.skipupdate) continue;
         if(l.update){
             l.update(l, update_batch, rate, net.momentum, net.decay);
         }
@@ -1440,5 +1441,51 @@ void restore_network_recurrent_state(network net)
     for (k = 0; k < net.n; ++k) {
         if (net.layers[k].type == CONV_LSTM) restore_state_conv_lstm(net.layers[k]);
         if (net.layers[k].type == CRNN) free_state_crnn(net.layers[k]);
+    }
+}
+
+void freeze_network(network net)
+{
+    if (net.freeze_layers <= 0) return;
+    net.layers[net.freeze_layers-1].stopbackward = 1;
+    int i = 0;
+    for (i = 0; i < net.freeze_layers; i++) {
+        net.layers[i].skipupdate = 1;
+    }
+}
+
+void defrost_network(network net)
+{
+    if (net.freeze_layers <= 0) return;
+    net.layers[net.freeze_layers-1].stopbackward = 0;
+    int i = 0;
+    for (i = 0; i < net.freeze_layers; i++) {
+        net.layers[i].skipupdate = 0;
+    }
+}
+
+void freeze_networks(network* nets, int ngpus)
+{
+    int i = 0;
+    for (i = 0; i < ngpus; i++) {
+        if (nets[i].freeze_layers <= 0) continue;
+        nets[i].layers[nets[i].freeze_layers-1].stopbackward = 1;
+        int j = 0;
+        for (j = 0; j < nets[i].freeze_layers; j++) {
+            nets[i].layers[j].skipupdate = 1;
+        }
+    }
+}
+
+void defrost_networks(network* nets, int ngpus)
+{
+    int i = 0;
+    for (i = 0; i < ngpus; i++) {
+        if (nets[i].freeze_layers <= 0) continue;
+        nets[i].layers[nets[i].freeze_layers-1].stopbackward = 0;
+        int j = 0;
+        for (j = 0; j < nets[i].freeze_layers; j++) {
+            nets[i].layers[j].skipupdate = 0;
+        }
     }
 }

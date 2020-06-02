@@ -1069,6 +1069,8 @@ void parse_net_options(list *options, network *net)
     net->batch = option_find_int(options, "batch",1);
     net->learning_rate = option_find_float(options, "learning_rate", .001);
     net->learning_rate_min = option_find_float_quiet(options, "learning_rate_min", .00001);
+    net->freeze_layers = option_find_int_quiet(options, "freeze_layers", 0);
+    net->when_defrost = option_find_int_quiet(options, "when_defrost", 0);
     net->batches_per_cycle = option_find_int_quiet(options, "sgdr_cycle", net->max_batches);
     net->batches_cycle_mult = option_find_int_quiet(options, "sgdr_mult", 2);
     net->momentum = option_find_float(options, "momentum", .9);
@@ -1497,6 +1499,7 @@ network parse_network_cfg_custom(char *filename, int batch, int time_steps)
         l.dont_update = option_find_int_quiet(options, "dont_update", 0);
         l.burnin_update = option_find_int_quiet(options, "burnin_update", 0);
         l.stopbackward = option_find_int_quiet(options, "stopbackward", 0);
+        l.skipupdate = option_find_int_quiet(options, "skipupdate", 0);
         l.train_only_bn = option_find_int_quiet(options, "train_only_bn", 0);
         l.dontload = option_find_int_quiet(options, "dontload", 0);
         l.dontloadscales = option_find_int_quiet(options, "dontloadscales", 0);

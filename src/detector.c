@@ -176,9 +176,40 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
     int count = 0;
     double time_remaining, avg_time = -1, alpha_time = 0.01;
+    int iterations_per_epoch = round(1. * plist->size / (net.batch * net.subdivisions));
+    printf("Iterations per epoch - %d\n", iterations_per_epoch);
+    int when_defrost = net.when_defrost;
+    int network_frozen = 0;
 
     //while(i*imgs < N*120){
     while (get_current_iteration(net) < net.max_batches) {
+        if ((get_current_iteration(net) >= when_defrost) && network_frozen) {
+#ifdef GPU
+            if (ngpus == 1) {
+                defrost_network(net);
+            }
+            else {
+                defrost_networks(nets, ngpus);
+            }
+#else
+            defrost_network(net);
+#endif
+            network_frozen = 0;
+        }
+        if ((get_current_iteration(net) < when_defrost) && !network_frozen) {
+#ifdef GPU
+            if (ngpus == 1) {
+                freeze_network(net);
+            }
+            else {
+                freeze_networks(nets, ngpus);
+            }
+#else
+            freeze_network(net);
+#endif
+            network_frozen = 1;
+        }
+
         if (l.random && count++ % 10 == 0) {
             float rand_coef = 1.4;
             if (l.random != 1.0) rand_coef = l.random;
@@ -261,9 +292,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         */
 
         const double load_time = (what_time_is_it_now() - time);
-        printf("Loaded: %lf seconds", load_time);
-        if (load_time > 0.1 && avg_loss > 0) printf(" - performance bottleneck on CPU or Disk HDD/SSD");
-        printf("\n");
+        //printf("Loaded: %lf seconds", load_time);
+        //if (load_time > 0.1 && avg_loss > 0) printf(" - performance bottleneck on CPU or Disk HDD/SSD");
+        //printf("\n");
 
         time = what_time_is_it_now();
         float loss = 0;
@@ -294,11 +325,6 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             if (mean_average_precision > 0) printf("\n Last accuracy mAP@0.5 = %2.2f %%, best = %2.2f %% ", mean_average_precision * 100, best_map * 100);
         }
 
-        if (net.cudnn_half) {
-            if (iteration < net.burn_in * 3) fprintf(stderr, "\n Tensor Cores are disabled until the first %d iterations are reached.\n", 3 * net.burn_in);
-            else fprintf(stderr, "\n Tensor Cores are used.\n");
-            fflush(stderr);
-        }
         printf("\n %d: %f, %f avg loss, %f rate, %lf seconds, %d images, %f hours left\n", iteration, loss, avg_loss, get_current_rate(net), (what_time_is_it_now() - time), iteration*imgs, avg_time);
         fflush(stdout);
 
@@ -361,23 +387,12 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
 
         //if (i % 1000 == 0 || (i < 1000 && i % 100 == 0)) {
         //if (i % 100 == 0) {
-        if (iteration >= (iter_save + 1000) || iteration % 1000 == 0) {
-            iter_save = iteration;
+        if (iteration % iterations_per_epoch == 0) {
 #ifdef GPU
             if (ngpus != 1) sync_nets(nets, ngpus, 0);
 #endif
             char buff[256];
-            sprintf(buff, "%s/%s_%d.weights", backup_directory, base, iteration);
-            save_weights(net, buff);
-        }
-
-        if (iteration >= (iter_save_last + 100) || (iteration % 100 == 0 && iteration > 1)) {
-            iter_save_last = iteration;
-#ifdef GPU
-            if (ngpus != 1) sync_nets(nets, ngpus, 0);
-#endif
-            char buff[256];
-            sprintf(buff, "%s/%s_last.weights", backup_directory, base);
+            sprintf(buff, "%s/%s_%d.weights", backup_directory, "epoch", iteration / iterations_per_epoch);
             save_weights(net, buff);
         }
         free_data(train);

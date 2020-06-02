@@ -327,6 +327,7 @@ struct layer {
 
     int onlyforward;
     int stopbackward;
+    int skipupdate;
     int train_only_bn;
     int dont_update;
     int burnin_update;
@@ -668,6 +669,8 @@ typedef struct network {
     float learning_rate;
     float learning_rate_min;
     float learning_rate_max;
+    int freeze_layers;
+    int when_defrost;
     int batches_per_cycle;
     int batches_cycle_mult;
     float momentum;
