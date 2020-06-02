@@ -1136,7 +1136,7 @@ data load_data_detection(int n, char **paths, int m, int w, int h, int c, int bo
                 pbot += rand_precalc_random(min_rdh, max_rdh, resize_r2);
             }
 
-            printf("\n pleft = %d, pright = %d, ptop = %d, pbot = %d, ow = %d, oh = %d \n", pleft, pright, ptop, pbot, ow, oh);
+            //printf("\n pleft = %d, pright = %d, ptop = %d, pbot = %d, ow = %d, oh = %d \n", pleft, pright, ptop, pbot, ow, oh);
 
             //float scale = rand_precalc_random(.25, 2, r_scale); // unused currently
 
