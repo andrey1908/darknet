@@ -205,6 +205,7 @@ typedef struct update_args {
 struct layer {
     LAYER_TYPE type;
     ACTIVATION activation;
+    ACTIVATION lstm_activation;
     COST_TYPE cost_type;
     void(*forward)   (struct layer, struct network_state);
     void(*backward)  (struct layer, struct network_state);
@@ -258,6 +259,8 @@ struct layer {
     int keep_delta_gpu;
     int optimized_memory;
     int steps;
+    int bottleneck;
+    float time_normalizer;
     int state_constrain;
     int hidden;
     int truth;
@@ -519,6 +522,8 @@ struct layer {
     float *r_gpu;
     float *h_gpu;
     float *stored_h_gpu;
+    float *bottelneck_hi_gpu;
+    float *bottelneck_delta_gpu;
 
     float *temp_gpu;
     float *temp2_gpu;
