@@ -25,6 +25,11 @@ static int coco_ids[] = { 1,2,3,4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,
 
 void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear, int dont_show, int calc_map, int mjpeg_port, int show_imgs, int benchmark_layers, char* chart_path)
 {
+    if (ngpus > 1) {
+        printf("Code needs some changes before using several GPUs (saving weights, log when network is defrosted, ...).\n");
+        exit(0);
+    }
+
     list *options = read_data_cfg(datacfg);
     char *train_images = option_find_str(options, "train", "data/train.txt");
     char *valid_images = option_find_str(options, "valid", train_images);
@@ -181,6 +186,10 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
     int when_defrost = net.when_defrost;
     int network_frozen = 0;
 
+    char str_buff[256];
+    sprintf(str_buff, "%s/log.txt", backup_directory);
+    FILE *log_file = fopen(str_buff, "a");
+
     //while(i*imgs < N*120){
     while (get_current_iteration(net) < net.max_batches) {
         if ((get_current_iteration(net) >= when_defrost) && network_frozen) {
@@ -208,6 +217,16 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             freeze_network(net);
 #endif
             network_frozen = 1;
+        }
+        if (when_defrost > 0){
+            if (get_current_iteration(net) == 0){
+                printf("Freezing network (%d first layers)\n", net.freeze_layers);
+                fprintf(log_file, "Freezing network (%d first layers)\n", net.freeze_layers);
+            }
+            if (get_current_iteration(net) == when_defrost){
+                printf("Defrosting network (%d first layers)\n", net.freeze_layers);
+                fprintf(log_file, "Defrosting network (%d first layers)\n", net.freeze_layers);
+            }
         }
 
         if (l.random && count++ % 10 == 0) {
@@ -313,7 +332,7 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         avg_loss = avg_loss*.9 + loss*.1;
 
         const int iteration = get_current_iteration(net);
-        //i = get_current_batch(net);
+        int lolkek = get_current_batch(net);
 
         int calc_map_for_each = 4 * train_images_num / (net.batch * net.subdivisions);  // calculate mAP for each 4 Epochs
         calc_map_for_each = fmax(calc_map_for_each, 100);
@@ -325,8 +344,9 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             if (mean_average_precision > 0) printf("\n Last accuracy mAP@0.5 = %2.2f %%, best = %2.2f %% ", mean_average_precision * 100, best_map * 100);
         }
 
-        printf("\n %d: %f, %f avg loss, %f rate, %lf seconds, %d images, %f hours left\n", iteration, loss, avg_loss, get_current_rate(net), (what_time_is_it_now() - time), iteration*imgs, avg_time);
+        printf("%d: %f, %f avg loss, %f rate, %lf seconds, %d images, %f hours left\n", iteration, loss, avg_loss, get_current_rate(net), (what_time_is_it_now() - time), iteration*imgs, avg_time);
         fflush(stdout);
+        fprintf(log_file, "%d: %f, %f avg loss, %f rate, %lf seconds, %d images, %f hours left\n", iteration, loss, avg_loss, get_current_rate(net), (what_time_is_it_now() - time), iteration*imgs, avg_time);
 
         int draw_precision = 0;
         if (calc_map && (iteration >= next_map_calc || iteration == net.max_batches)) {
@@ -394,15 +414,11 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
             char buff[256];
             sprintf(buff, "%s/%s_%d.weights", backup_directory, "epoch", iteration / iterations_per_epoch);
             save_weights(net, buff);
+            fprintf(log_file, "Saving weights (epoch %d)\n", iteration / iterations_per_epoch);
         }
         free_data(train);
     }
-#ifdef GPU
-    if (ngpus != 1) sync_nets(nets, ngpus, 0);
-#endif
-    char buff[256];
-    sprintf(buff, "%s/%s_final.weights", backup_directory, base);
-    save_weights(net, buff);
+    fclose(log_file);
 
 #ifdef OPENCV
     release_mat(&img);
