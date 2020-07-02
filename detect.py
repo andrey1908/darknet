@@ -50,6 +50,9 @@ lib.free_detections.argtypes = [ctypes.POINTER(Detection), ctypes.c_int]
 lib.get_model_input_shape.restype = IntPair
 lib.get_model_input_shape.argtypes = [ctypes.c_void_p, ]
 
+lib.resize_network.restype = ctypes.c_int
+lib.resize_network.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+
 
 def build_parser():
     parser = argparse.ArgumentParser()
@@ -76,6 +79,10 @@ def free_detections(detections):
 def get_model_input_shape(model):
     shape = lib.get_model_input_shape(model)
     return shape.x, shape.y
+
+
+def resize_network(model, w, h):
+    return lib.resize_network(model, w, h)
 
 
 #spent_time = 0
