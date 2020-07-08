@@ -81,7 +81,7 @@ def get_model_input_shape(model):
     return shape.x, shape.y
 
 
-def resize_network(model, w, h):
+def resize_model(model, w, h):
     return lib.resize_network(model, w, h)
 
 

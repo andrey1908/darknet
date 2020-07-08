@@ -1,6 +1,6 @@
 import argparse
 import os
-from detect import init_model, detect, free_model, resize_network
+from model_tools import init_model, detect, free_model, resize_model
 import json
 import xml.etree.ElementTree as xml
 from xml.dom import minidom
@@ -229,7 +229,7 @@ def predict(config_file, model_file, images_folder, out_file=None, predict_to='c
     model = init_model(config_file, model_file)
     if input_shape[0] is not None:
         input_shape = tuple(map(lambda x: max(my_round(x/32) * 32, 32), input_shape))
-        resize_network(model, input_shape[0], input_shape[1])
+        resize_model(model, input_shape[0], input_shape[1])
     images_names, images_ids, images_files = get_images(images_folder, images_file=images_file)
     class_id_to_name = get_class_id_to_name(classes_file=classes_file)
     out_data = do_predictions(model, images_names, images_ids, images_files, class_id_to_name, threshold=threshold,
