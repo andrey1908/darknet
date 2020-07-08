@@ -674,6 +674,7 @@ typedef struct network {
     float learning_rate;
     float learning_rate_min;
     float learning_rate_max;
+    int init_layers;
     int freeze_layers;
     int when_defrost;
     int batches_per_cycle;

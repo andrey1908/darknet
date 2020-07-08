@@ -82,7 +82,14 @@ void train_detector(char *datacfg, char *cfgfile, char *weightfile, int *gpus, i
         nets[k] = parse_network_cfg(cfgfile);
         nets[k].benchmark_layers = benchmark_layers;
         if (weightfile) {
-            load_weights(&nets[k], weightfile);
+            if (clear && (nets[k].init_layers > 0)) {
+                printf("Load only first %d layers\n", nets[k].init_layers);
+                load_weights_upto(&nets[k], weightfile, nets[k].init_layers);
+            }
+            else {
+                printf("Load all weights\n");
+                load_weights(&nets[k], weightfile);
+            }
         }
         if (clear) {
             *nets[k].seen = 0;

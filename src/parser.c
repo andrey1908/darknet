@@ -1074,6 +1074,7 @@ void parse_net_options(list *options, network *net)
     net->batch = option_find_int(options, "batch",1);
     net->learning_rate = option_find_float(options, "learning_rate", .001);
     net->learning_rate_min = option_find_float_quiet(options, "learning_rate_min", .00001);
+    net->init_layers = option_find_int_quiet(options, "init_layers", 0);
     net->freeze_layers = option_find_int_quiet(options, "freeze_layers", 0);
     net->when_defrost = option_find_int_quiet(options, "when_defrost", 0);
     net->batches_per_cycle = option_find_int_quiet(options, "sgdr_cycle", net->max_batches);
