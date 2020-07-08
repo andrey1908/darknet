@@ -72,7 +72,7 @@ def run_models(config_file, models_files, epochs, report_folder, images_folder, 
         if os.path.exists(out_file) and not repredict:
             continue
         predict(config_file, model_file, images_folder, out_file, predict_to='coco', detections_only=True,
-                images_file=annotations_file, classes_file=annotations_file, threshold=0.001, max_dets=1000)
+                images_file=annotations_file, classes_file=annotations_file, threshold=0.01, max_dets=100)
 
 
 def write_json_dict(json_dict, w):
