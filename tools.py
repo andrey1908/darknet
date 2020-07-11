@@ -97,7 +97,7 @@ def detect(model, image_file, max_dets=1000, threshold=0.001, nms=0.45):
     detections = lib.detect(model, image_file.encode(), threshold, nms)
     #global spent_time
     #global counter
-    #time_now = time()
+    #start = time()
     if detections.num == 0:
         return list(), list(), list()
     bboxes = list()
@@ -121,7 +121,7 @@ def detect(model, image_file, max_dets=1000, threshold=0.001, nms=0.45):
     free_detections(detections)
     if len(scores) > max_dets:
         scores, classes, bboxes = zip(*sorted(zip(scores, classes, bboxes), reverse=True)[:max_dets])
-    #spent_time += (time() - time_now)
+    #spent_time += (time() - start)
     #counter += 1
     #print(spent_time / counter * 1000)
     return bboxes, scores, classes

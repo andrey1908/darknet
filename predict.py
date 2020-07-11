@@ -1,6 +1,6 @@
 import argparse
 import os
-from model_tools import init_model, detect, free_model, resize_model
+from tools import init_model, detect, free_model, resize_model
 import json
 import xml.etree.ElementTree as xml
 from xml.dom import minidom
@@ -37,6 +37,8 @@ def get_images(images_folder, images_file=None):
         return get_images_from_folder(images_folder)
     if images_file.endswith('.json'):
         return get_images_from_json(images_folder, images_file)
+    if images_file.endswith('.txt'):
+        return get_images_from_list(images_folder, images_file)
     return None, None, None
 
 
@@ -63,13 +65,26 @@ def get_images_from_json(images_folder, json_file):
     return images_names, images_ids, images_files
 
 
+def get_images_from_list(images_folder, list_file):
+    with open(list_file, 'r') as f:
+        images_names = f.readlines()
+    images_ids, images_files = list(), list()
+    for i, image_name in enumerate(images_names):
+        if image_name[-1] == '\n':
+            image_name = image_name[:-1]
+            images_names[i] = image_name
+        images_ids.append(i)
+        images_files.append(os.path.join(images_folder, image_name))
+    return images_names, images_ids, images_files
+
+
 def get_class_id_to_name(classes_file=None):
     if classes_file is None:
         return None
     if classes_file.endswith('.json'):
         return get_class_id_to_name_from_json(classes_file)
     if classes_file.endswith('.names'):
-        return get_class_id_to_name_from_names(classes_file)
+        return get_class_id_to_name_from_list(classes_file)
     return None
 
 
@@ -83,10 +98,10 @@ def get_class_id_to_name_from_json(json_file):
     return class_id_to_name
 
 
-def get_class_id_to_name_from_names(names_file):
+def get_class_id_to_name_from_list(list_file):
     class_id_to_name = dict()
     class_id = 0
-    with open(names_file, 'r') as f:
+    with open(list_file, 'r') as f:
         classes_names = f.readlines()
     for class_name in classes_names:
         if class_name[-1] == '\n':
