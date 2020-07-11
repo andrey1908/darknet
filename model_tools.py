@@ -22,7 +22,11 @@ class Detection(ctypes.Structure):
                 ('objectness', ctypes.c_float),
                 ('sort_class', ctypes.c_int),
                 ('uc', ctypes.POINTER(ctypes.c_float)),
-                ('points', ctypes.c_int)]
+                ('points', ctypes.c_int),
+                ('embeddings', ctypes.POINTER(ctypes.c_float)),
+                ('embedding_size', ctypes.c_int),
+                ('sim', ctypes.c_float),
+                ('track_id', ctypes.c_int)]
 
 
 class Detections(ctypes.Structure):
