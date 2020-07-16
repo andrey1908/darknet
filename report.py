@@ -8,7 +8,6 @@ from dataset_scripts.metrics_eval import evaluate_detections, extract_mAP, extra
 import json
 import sys
 from dataset_scripts.utils.coco_tools import leave_boxes
-import threading
 
 
 def build_parser():
@@ -71,13 +70,8 @@ def run_models(config_file, models_files, epochs, report_folder, images_folder, 
         out_file = os.path.join(report_folder, 'predictions', 'epoch_{}.json'.format(epoch))
         if os.path.exists(out_file) and not repredict:
             continue
-        predict(config_file, model_file, images_folder, out_file, predict_to='coco', detections_only=True,
+        predict(config_file, model_file, images_folder, out_file=out_file, predict_to='coco', detections_only=True,
                 images_file=annotations_file, classes_file=annotations_file, threshold=0.01, max_dets=100)
-
-
-def write_json_dict(json_dict, w):
-    with open(w, 'w') as f:
-        json.dump(json_dict, f)
 
 
 def calculate_metrics(epochs, report_folder, annotations_file, area, shape=(None, None)):
@@ -87,7 +81,7 @@ def calculate_metrics(epochs, report_folder, annotations_file, area, shape=(None
     ###########
     with open(annotations_file, 'r') as f:
         annotations_dict = json.load(f)
-    leave_boxes(annotations_dict, area=area, width=shape[0], height=shape[1])
+    leave_boxes(annotations_dict, area, width=shape[0], height=shape[1])
 
     for epoch in tqdm(epochs):
         detections_file = os.path.join(report_folder, 'predictions/epoch_{}.json'.format(epoch))
@@ -100,16 +94,9 @@ def calculate_metrics(epochs, report_folder, annotations_file, area, shape=(None
             continue
         ###########
         detections_dict_with_images = {'images': annotations_dict['images'], 'annotations': detections_dict}
-        leave_boxes(detections_dict_with_images, area=area, width=shape[0], height=shape[1])
+        leave_boxes(detections_dict_with_images, area, width=shape[0], height=shape[1])
         detections_dict = detections_dict_with_images['annotations']
-
-        annotations_dict_r, annotations_dict_w = os.pipe()
-        annotations_dict_writing = threading.Thread(target=write_json_dict, args=(annotations_dict, annotations_dict_w))
-        annotations_dict_writing.start()
-        detections_dict_r, detections_dict_w = os.pipe()
-        detections_dict_writing = threading.Thread(target=write_json_dict, args=(detections_dict, detections_dict_w))
-        detections_dict_writing.start()
-        results = evaluate_detections(annotations_dict_r, detections_dict_r)
+        results = evaluate_detections(annotations_dict, detections_dict)
         classes = get_classes(results)
         metric = [extract_mAP(results)]
         metric += extract_AP(results, classes)
@@ -156,8 +143,8 @@ def report(config_file, models_folder, report_folder, images_folder, annotations
         existing_epochs, existing_metrics = list(), list()
     create_folders(report_folder)
     models_files, epochs = get_models_files(models_folder, existing_epochs)
-    run_models(config_file, models_files, epochs, report_folder, images_folder, annotations_file, repredict)
-    metrics, classes = calculate_metrics(epochs, report_folder, annotations_file, area, shape)
+    run_models(config_file, models_files, epochs, report_folder, images_folder, annotations_file, repredict=repredict)
+    metrics, classes = calculate_metrics(epochs, report_folder, annotations_file, area, shape=shape)
     epochs += existing_epochs
     metrics += existing_metrics
     epochs, metrics = zip(*sorted(zip(epochs, metrics)))

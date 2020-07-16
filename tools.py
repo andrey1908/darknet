@@ -91,7 +91,7 @@ def resize_model(model, w, h):
 
 #spent_time = 0
 #counter = 0
-def detect(model, image_file, max_dets=1000, threshold=0.001, nms=0.45):
+def detect(model, image_file, threshold=0.001, max_dets=1000, nms=0.45):
     image = Image.open(image_file)
     width, height = image.width, image.height
     detections = lib.detect(model, image_file.encode(), threshold, nms)
