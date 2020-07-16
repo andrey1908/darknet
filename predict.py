@@ -27,6 +27,7 @@ def build_parser():
     parser.add_argument('-cls', '--classes-file', type=str)
     parser.add_argument('-thr', '--threshold', type=float, default=0.001)
     parser.add_argument('-max-dets', '--max-dets', type=int, default=1000, help='Maximum detections per image')
+    parser.add_argument('-nms', '--nms'. type=float, default=0.45)
     parser.add_argument('-is', '--input-shape', type=int, nargs=2, default=[None, None])
     parser.add_argument('-gpu', '--gpu', type=int, default=0)
     return parser
@@ -199,10 +200,10 @@ def add_predictions_to_coco(image_name, image_id, image_file, bboxes, scores, cl
 
 
 def do_predictions(model, images_names, images_ids, images_files, class_id_to_name, threshold=0.001, max_dets=1000,
-                   predict_to='cvat'):
+                   nms=0.45, predict_to='cvat'):
     out_data = init_out_data(len(images_files), class_id_to_name, predict_to=predict_to)
     for image_name, image_id, image_file in tqdm(list(zip(images_names, images_ids, images_files))):
-        bboxes, scores, classes = detect(model, image_file, max_dets=max_dets, threshold=threshold)
+        bboxes, scores, classes = detect(model, image_file, max_dets=max_dets, threshold=threshold, nms=nms)
         add_predictions_to_out_data(image_name, image_id, image_file, bboxes, scores, classes, out_data, class_id_to_name,
                                     predict_to=predict_to)
     return out_data
@@ -236,7 +237,7 @@ def my_round(a):
 
 
 def predict(config_file, model_file, images_folder, out_file=None, predict_to='coco', detections_only=False,
-            images_file=None, classes_file=None, threshold=0.001, max_dets=1000, input_shape=(None, None)):
+            images_file=None, classes_file=None, threshold=0.001, max_dets=1000, nms=0.45, input_shape=(None, None)):
     if predict_to not in ('coco', 'cvat'):
         raise RuntimeError()
     if len(input_shape) != 2:
@@ -248,7 +249,7 @@ def predict(config_file, model_file, images_folder, out_file=None, predict_to='c
     images_names, images_ids, images_files = get_images(images_folder, images_file=images_file)
     class_id_to_name = get_class_id_to_name(classes_file=classes_file)
     out_data = do_predictions(model, images_names, images_ids, images_files, class_id_to_name, threshold=threshold,
-                              max_dets=max_dets, predict_to=predict_to)
+                              max_dets=max_dets, nms=nms, predict_to=predict_to)
     free_model(model)
     if (predict_to == 'coco') and detections_only:
         out_data = out_data['annotations']
