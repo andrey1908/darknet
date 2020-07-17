@@ -23,6 +23,9 @@ class ImageSelector(QGroupBox):
         images_files = sorted(os.listdir(self.images_folder))
         self.images_files = list(map(lambda x: os.path.join(self.images_folder, x), images_files))
 
+    def get_current_image_file(self):
+        return self.images_files[self.current_image_idx]
+
     def init_UI(self):
         self.prev_button = QPushButton('Prev')
         self.next_button = QPushButton('Next')

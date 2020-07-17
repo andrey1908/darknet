@@ -22,7 +22,7 @@ class Detector(QObject):
         self.bboxes, self.scores, self.classes = None, None, None
         self.image_file = None
         self.image_pixmap = None
-        self.threshold = 0.4
+        self.threshold = None
 
     def get_classes_names(self):
         with open(self.classes_file, 'r') as f:
@@ -36,6 +36,10 @@ class Detector(QObject):
         self.image_file = image_file
         self.image_pixmap = QPixmap(image_file)
         self.detect()
+        self.draw()
+
+    def new_threshold(self, threshold):
+        self.threshold = threshold
         self.draw()
 
     def detect(self):
