@@ -34,8 +34,11 @@ void free_model(network* model) {
     free(model);
 }
 
-detections detect(network* net, char* image_file, float obj_thresh, float nms) {
-    image im = load_image(image_file, 0, 0, net->c);
+int get_model_c(network* model) {
+    return model->c;
+}
+
+detections detect(network* net, image im, float obj_thresh, float nms) {
     image sized = letterbox_image(im, net->w, net->h);
     //static double spent_time = 0;
     //static int counter = 0;
@@ -55,7 +58,6 @@ detections detect(network* net, char* image_file, float obj_thresh, float nms) {
     //spent_time += (end - start);
     //counter += 1;
     //printf("%lf ms\n", spent_time / counter * 1000);
-    free_image(im);
     free_image(sized);
     return (detections){nboxes, dets};
 }

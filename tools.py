@@ -28,6 +28,12 @@ class Detection(ctypes.Structure):
                 ('sim', ctypes.c_float),
                 ('track_id', ctypes.c_int)]
 
+class CImage(ctypes.Structure):
+    _fields_ = [('w', ctypes.c_int),
+                ('h', ctypes.c_int),
+                ('c', ctypes.c_int),
+                ('data', ctypes.POINTER(ctypes.c_float))]
+
 
 class Detections(ctypes.Structure):
     _fields_ = [('num', ctypes.c_int),
@@ -47,15 +53,23 @@ lib.init_model.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
 lib.free_model.argtypes = [ctypes.c_void_p, ]
 
 lib.detect.restype = Detections
-lib.detect.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_float, ctypes.c_float]
+lib.detect.argtypes = [ctypes.c_void_p, CImage, ctypes.c_float, ctypes.c_float]
 
 lib.free_detections.argtypes = [ctypes.POINTER(Detection), ctypes.c_int]
 
 lib.get_model_input_shape.restype = IntPair
 lib.get_model_input_shape.argtypes = [ctypes.c_void_p, ]
 
+lib.get_model_c.restype = ctypes.c_int
+lib.get_model_c.argtypes = [ctypes.c_void_p, ]
+
 lib.resize_network.restype = ctypes.c_int
 lib.resize_network.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
+
+lib.load_image.restype = CImage
+lib.load_image.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+
+lib.free_image.argtypes = [CImage, ]
 
 
 def build_parser():
@@ -92,9 +106,10 @@ def resize_model(model, w, h):
 #spent_time = 0
 #counter = 0
 def detect(model, image_file, threshold=0.001, max_dets=1000, nms=0.45):
-    image = Image.open(image_file)
-    width, height = image.width, image.height
-    detections = lib.detect(model, image_file.encode(), threshold, nms)
+    image = lib.load_image(image_file.encode(), 0, 0, lib.get_model_c(model))
+    width, height = int(image.w), int(image.h)
+    detections = lib.detect(model, image, threshold, nms)
+    lib.free_image(image)
     #global spent_time
     #global counter
     #start = time()
