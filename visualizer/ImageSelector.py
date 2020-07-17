@@ -5,24 +5,23 @@ import os
 
 
 class ImageSelector(QGroupBox):
-    imageChanged = pyqtSignal()
+    imageChanged = pyqtSignal(str)
 
     def __init__(self, images_folder, width=None, height=None):
         super(ImageSelector, self).__init__('Image selector')
+        self.images_folder = images_folder
         self.width = width
         self.height = height
         self.show_selected_image = (self.width is not None) and (self.height is not None)
-        self.load_images(images_folder)
-        self.current_image_idx = 0 if len(self.images) > 0 else None
+        self.load_images()
+        self.current_image_idx = 0 if len(self.images_files) > 0 else None
         self.init_UI()
+        self.prev_button.clicked.connect(self.go_to_prev_image)
+        self.next_button.clicked.connect(self.go_to_next_image)
 
-    def load_images(self, images_folder):
-        images_files = sorted(os.listdir(images_folder))
-        self.images_files = list(map(lambda x: os.path.join(images_folder, x), images_files))
-        self.images = list()
-        for image_file in self.images_files:
-            image = QPixmap(image_file)
-            self.images.append(image)
+    def load_images(self):
+        images_files = sorted(os.listdir(self.images_folder))
+        self.images_files = list(map(lambda x: os.path.join(self.images_folder, x), images_files))
 
     def init_UI(self):
         self.prev_button = QPushButton('Prev')
@@ -45,27 +44,25 @@ class ImageSelector(QGroupBox):
         self.setLayout(layout)
         self.refresh_UI()
 
-        self.prev_button.clicked.connect(self.go_to_prev_image)
-        self.next_button.clicked.connect(self.go_to_next_image)
-
     def refresh_UI(self):
         self.current_image_idx_label.setNum(self.current_image_idx)
         if self.show_selected_image:
-            image_to_show = self.images[self.current_image_idx].scaled(self.width, self.height, Qt.KeepAspectRatio)
+            image_to_show = QPixmap(self.images_files[self.current_image_idx])
+            image_to_show = image_to_show.scaled(self.width, self.height, Qt.KeepAspectRatio)
             self.image_label.setPixmap(image_to_show)
 
     def go_to_prev_image(self):
         if self.current_image_idx > 0:
             self.current_image_idx -= 1
         else:
-            self.current_image_idx = len(self.images) - 1
+            self.current_image_idx = len(self.images_files) - 1
         self.refresh_UI()
-        self.imageChanged.emit()
+        self.imageChanged.emit(self.images_files[self.current_image_idx])
 
     def go_to_next_image(self):
-        if self.current_image_idx + 1 < len(self.images):
+        if self.current_image_idx + 1 < len(self.images_files):
             self.current_image_idx += 1
         else:
             self.current_image_idx = 0
         self.refresh_UI()
-        self.imageChanged.emit()
+        self.imageChanged.emit(self.images_files[self.current_image_idx])
