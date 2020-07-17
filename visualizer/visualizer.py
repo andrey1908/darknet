@@ -3,6 +3,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 from ImageSelector import ImageSelector
 from Detector import Detector
+from Viewer import Viewer
 import os
 
 
@@ -11,23 +12,25 @@ class Visualizer(QWidget):
         super(Visualizer, self).__init__()
         self.image_selector = ImageSelector(images_folder)
         self.image_selector.imageChanged.connect(self.imageChanged)
-        self.detector = Detector(config_file, model_file, classes_file, window_width, window_height)
+        self.viewer = Viewer(window_width, window_height)
+        self.detector = Detector(config_file, model_file, classes_file)
+        self.detector.detectionCompleted.connect(self.viewer.set_pixmap)
         self.init_UI()
         self.init_detector()
 
     def init_UI(self):
         vbox = QVBoxLayout()
         vbox.addWidget(self.image_selector)
-        vbox.addWidget(self.detector)
+        vbox.addWidget(self.viewer)
         self.setLayout(vbox)
 
     def init_detector(self):
         self.detector.image_file = self.image_selector.images_files[self.image_selector.current_image_idx]
-        self.detector.refresh_UI()
+        self.detector.detect()
 
     def imageChanged(self):
         self.detector.image_file = self.image_selector.images_files[self.image_selector.current_image_idx]
-        self.detector.refresh_UI()
+        self.detector.detect()
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = str("0")

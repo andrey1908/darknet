@@ -1,21 +1,22 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGroupBox, QPushButton, QHBoxLayout, QVBoxLayout
 from PyQt5.QtGui import QPixmap, QPainter, QPen
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QObject, pyqtSignal
 from numpy import clip
 from tools import init_model, free_model, resize_model, detect
 
 
-class Detector(QGroupBox):
-    def __init__(self, config_file, model_file, classes_file, window_width, window_height):
-        super(Detector, self).__init__('Detector')
+class Detector(QObject):
+    detectionCompleted = pyqtSignal(QPixmap)
+
+    def __init__(self, config_file, model_file, classes_file):
+        super(Detector, self).__init__()
         self.config_file = config_file
         self.model_file = model_file
         self.classes_file = classes_file
         self.classes = self.get_classes()
-        self.window_width = window_width
-        self.window_height = window_height
         self.image_file = None
-        self.init_UI()
+        self.pen = QPen(Qt.red)
+        self.pen.setWidth(3)
         self.model = init_model(config_file, model_file)
 
     def get_classes(self):
@@ -26,34 +27,18 @@ class Detector(QGroupBox):
                 classes[i] = classes[i][:-1]
         return classes
 
-    def init_UI(self):
-        self.image_label = QLabel(self)
-        self.image_label.setFixedSize(self.window_width, self.window_height)
-        self.image_label.setAlignment(Qt.AlignCenter)
-        self.image_label.setStyleSheet("background-color: black")
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.image_label)
-        self.setLayout(vbox)
-
-        self.pen = QPen(Qt.red)
-        self.pen.setWidth(1)
-
-    def refresh_UI(self):
+    def detect(self):
         bboxes, scores, classes = detect(self.model, self.image_file, threshold=0.4)
         image = QPixmap(self.image_file)
-        old_width = image.width()
-        image = image.scaled(self.window_width, self.window_height, Qt.KeepAspectRatio)
-        scale_factor = image.width() / old_width
         image_draw = QPainter(image)
         image_draw.setPen(self.pen)
         for bbox, score, cl in zip(bboxes, scores, classes):
-            bbox = list(map(lambda x: x * scale_factor, bbox))
             self.preprocess_box(bbox, image.width(), image.height())
             if (bbox[2] <= 0) or (bbox[3] <= 0):
                 continue
             image_draw.drawRect(bbox[0], bbox[1], bbox[2], bbox[3])
         image_draw.end()
-        self.image_label.setPixmap(image)
+        self.detectionCompleted.emit(image)
 
     def preprocess_box(self, bbox, im_w, im_h):
         bbox[0] = clip(bbox[0], 0, im_w-1)
