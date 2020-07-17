@@ -13,9 +13,9 @@ class Visualizer(QWidget):
     def __init__(self, config_file, model_file, classes_file, images_folder, window_width, window_height,
                  input_base_width, input_base_height):
         super(Visualizer, self).__init__()
-        self.image_selector = ImageSelector(images_folder)
-        self.threshold_selector = ThresholdSelector()
-        self.input_size_selector = InputSizeSelector(input_base_width, input_base_height)
+        self.image_selector = ImageSelector(images_folder, show_delay=True)
+        self.threshold_selector = ThresholdSelector(show_delay=True)
+        self.input_size_selector = InputSizeSelector(input_base_width, input_base_height, show_delay=True)
         self.viewer = Viewer(window_width, window_height)
         self.detector = Detector(config_file, model_file, classes_file, self.image_selector.get_current_image_file(),
                                  self.threshold_selector.get_current_threshold(),

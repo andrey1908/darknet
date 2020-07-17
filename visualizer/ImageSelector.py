@@ -2,16 +2,18 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGroupBox, QPushButto
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
 import os
+from time import time
 
 
 class ImageSelector(QGroupBox):
     imageChanged = pyqtSignal(str)
 
-    def __init__(self, images_folder, width=None, height=None):
+    def __init__(self, images_folder, width=None, height=None, show_delay=False):
         super(ImageSelector, self).__init__('Image selector')
         self.images_folder = images_folder
         self.width = width
         self.height = height
+        self.show_delay = show_delay
         self.show_selected_image = (self.width is not None) and (self.height is not None)
         self.load_images()
         self.current_image_idx = 0 if len(self.images_files) > 0 else None
@@ -34,6 +36,10 @@ class ImageSelector(QGroupBox):
         hbox.addWidget(self.prev_button)
         hbox.addWidget(self.next_button)
         hbox.addWidget(self.current_image_idx_label)
+        if self.show_delay:
+            self.delay_label = QLabel()
+            self.delay_label.setText('- ms')
+            hbox.addWidget(self.delay_label)
         layout = hbox
         if self.show_selected_image:
             self.image_label = QLabel()
@@ -55,17 +61,27 @@ class ImageSelector(QGroupBox):
             self.image_label.setPixmap(image_to_show)
 
     def go_to_prev_image(self):
+        if self.show_delay:
+            start_time = time()
         if self.current_image_idx > 0:
             self.current_image_idx -= 1
         else:
             self.current_image_idx = len(self.images_files) - 1
         self.refresh_UI()
         self.imageChanged.emit(self.images_files[self.current_image_idx])
+        if self.show_delay:
+            time_passed = (time() - start_time) * 1000
+            self.delay_label.setText('{:.1f} ms'.format(time_passed))
 
     def go_to_next_image(self):
+        if self.show_delay:
+            start_time = time()
         if self.current_image_idx + 1 < len(self.images_files):
             self.current_image_idx += 1
         else:
             self.current_image_idx = 0
         self.refresh_UI()
         self.imageChanged.emit(self.images_files[self.current_image_idx])
+        if self.show_delay:
+            time_passed = (time() - start_time) * 1000
+            self.delay_label.setText('{:.1f} ms'.format(time_passed))
