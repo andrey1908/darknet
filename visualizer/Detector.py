@@ -8,7 +8,7 @@ from tools import init_model, free_model, resize_model, detect
 class Detector(QObject):
     detectionsDrawn = pyqtSignal(QPixmap)
 
-    def __init__(self, config_file, model_file, classes_file):
+    def __init__(self, config_file, model_file, classes_file, image_file, threshold, input_size):
         super(Detector, self).__init__()
         self.config_file = config_file
         self.model_file = model_file
@@ -18,11 +18,13 @@ class Detector(QObject):
         self.pen.setWidth(3)
         self.font = QFont('Decorative', 20)
         self.model = init_model(config_file, model_file)
+        resize_model(self.model, input_size[0], input_size[1])
 
         self.bboxes, self.scores, self.classes = None, None, None
-        self.image_file = None
-        self.image_pixmap = None
-        self.threshold = None
+        self.image_file = image_file
+        self.image_pixmap = QPixmap(image_file)
+        self.threshold = threshold
+        self.input_size = input_size
 
     def get_classes_names(self):
         with open(self.classes_file, 'r') as f:
@@ -40,6 +42,12 @@ class Detector(QObject):
 
     def new_threshold(self, threshold):
         self.threshold = threshold
+        self.draw()
+
+    def new_input_size(self, input_size):
+        self.input_size = input_size
+        resize_model(self.model, input_size[0], input_size[1])
+        self.detect()
         self.draw()
 
     def detect(self):

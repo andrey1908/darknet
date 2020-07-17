@@ -2,24 +2,31 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGroupBox, QPushButto
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 from ImageSelector import ImageSelector
+from ThresholdSelector import ThresholdSelector
+from InputSizeSelector import InputSizeSelector
 from Viewer import Viewer
 from Detector import Detector
-from ThresholdSelector import ThresholdSelector
 import os
 
 
 class Visualizer(QWidget):
-    def __init__(self, config_file, model_file, classes_file, images_folder, window_width, window_height):
+    def __init__(self, config_file, model_file, classes_file, images_folder, window_width, window_height,
+                 input_base_width, input_base_height):
         super(Visualizer, self).__init__()
         self.image_selector = ImageSelector(images_folder)
         self.threshold_selector = ThresholdSelector()
+        self.input_size_selector = InputSizeSelector(input_base_width, input_base_height)
         self.viewer = Viewer(window_width, window_height)
-        self.detector = Detector(config_file, model_file, classes_file)
+        self.detector = Detector(config_file, model_file, classes_file, self.image_selector.get_current_image_file(),
+                                 self.threshold_selector.get_current_threshold(),
+                                 self.input_size_selector.get_current_input_size())
         self.image_selector.imageChanged.connect(self.detector.new_image)
         self.threshold_selector.thresholdChanged.connect(self.detector.new_threshold)
+        self.input_size_selector.inputSizeChanged.connect(self.detector.new_input_size)
         self.detector.detectionsDrawn.connect(self.viewer.set_pixmap)
         self.init_UI()
-        self.init_detector()
+        self.detector.detect()
+        self.detector.draw()
 
     def init_UI(self):
         vbox = QVBoxLayout()
@@ -28,22 +35,16 @@ class Visualizer(QWidget):
         hbox = QHBoxLayout()
         hbox.addLayout(vbox)
         hbox.addWidget(self.threshold_selector)
+        hbox.addWidget(self.input_size_selector)
         self.setLayout(hbox)
-
-    def init_detector(self):
-        self.detector.image_file = self.image_selector.get_current_image_file()
-        self.detector.image_pixmap = QPixmap(self.detector.image_file)
-        self.detector.threshold = self.threshold_selector.get_current_threshold()
-        self.detector.detect()
-        self.detector.draw()
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = str("0")
 app = QApplication([])
-root_folder = '/home/k_andrei/new_darknet/darknet/auto_labeled/vehicle+pedestrian+traffic_light+traffic_sign/yolov4/'
+root_folder = '/home/k_andrei/new_darknet/darknet/auto_labeled/vehicle+pedestrian+traffic_light+traffic_sign/yolov3-mod/'
 images_folder = '/home/k_andrei/new_darknet/darknet/auto_labeled/vehicle+pedestrian+traffic_light+traffic_sign/' \
                 'test_yandex_disk/Taganrog_15'
-vis = Visualizer(root_folder + 'config/yolov4.cfg', root_folder + 'epoch_36.weights',
-                 root_folder + 'config/classes.names', images_folder, 800, 500)
+vis = Visualizer(root_folder + 'config/yolov3-mod.cfg', root_folder + 'epoch_40.weights',
+                 root_folder + 'config/classes.names', images_folder, 800, 500, 1024, 576)
 vis.show()
 app.exec_()
