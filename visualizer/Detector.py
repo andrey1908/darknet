@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGroupBox, QPushButto
 from PyQt5.QtGui import QPixmap, QPainter, QPen, QFont
 from PyQt5.QtCore import Qt, QObject, pyqtSignal
 from numpy import clip
-from tools import init_model, free_model, resize_model, detect
+from tools import init_model, free_model, resize_model, detect, lib
 
 
 class Detector(QObject):
@@ -23,6 +23,7 @@ class Detector(QObject):
         self.bboxes, self.scores, self.classes = None, None, None
         self.image_file = image_file
         self.image_pixmap = QPixmap(image_file)
+        self.image_c = lib.load_image(image_file.encode(), 0, 0, lib.get_model_c(self.model))
         self.threshold = threshold
         self.input_size = input_size
 
@@ -37,6 +38,7 @@ class Detector(QObject):
     def new_image(self, image_file):
         self.image_file = image_file
         self.image_pixmap = QPixmap(image_file)
+        self.image_c = lib.load_image(image_file.encode(), 0, 0, lib.get_model_c(self.model))
         self.detect()
         self.draw()
 
@@ -51,7 +53,7 @@ class Detector(QObject):
         self.draw()
 
     def detect(self):
-        self.bboxes, self.scores, self.classes = detect(self.model, self.image_file, max_dets=100)
+        self.bboxes, self.scores, self.classes = detect(self.model, self.image_c, max_dets=100)
         for bbox, score, cl in zip(self.bboxes, self.scores, self.classes):
             self.preprocess_box(bbox, self.image_pixmap.width(), self.image_pixmap.height())
             if score < self.threshold:

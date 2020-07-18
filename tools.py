@@ -105,11 +105,17 @@ def resize_model(model, w, h):
 
 #spent_time = 0
 #counter = 0
-def detect(model, image_file, threshold=0.001, max_dets=1000, nms=0.45):
-    image = lib.load_image(image_file.encode(), 0, 0, lib.get_model_c(model))
-    width, height = int(image.w), int(image.h)
-    detections = lib.detect(model, image, threshold, nms)
-    lib.free_image(image)
+def detect(model, image, threshold=0.001, max_dets=1000, nms=0.45):
+    if isinstance(image, str):
+        _free_image = True
+        im = lib.load_image(image.encode(), 0, 0, lib.get_model_c(model))
+    else:
+        _free_image = False
+        im = image
+    width, height = int(im.w), int(im.h)
+    detections = lib.detect(model, im, threshold, nms)
+    if _free_image:
+        lib.free_image(im)
     #global spent_time
     #global counter
     #start = time()

@@ -41,10 +41,10 @@ class Visualizer(QWidget):
 
 os.environ["CUDA_VISIBLE_DEVICES"] = str("0")
 app = QApplication([])
-root_folder = '/home/k_andrei/new_darknet/darknet/auto_labeled/vehicle+pedestrian+traffic_light+traffic_sign/yolov3-mod/'
+root_folder = '/home/k_andrei/new_darknet/darknet/auto_labeled/vehicle+pedestrian+traffic_light+traffic_sign/yolov4/'
 images_folder = '/home/k_andrei/new_darknet/darknet/auto_labeled/vehicle+pedestrian+traffic_light+traffic_sign/' \
                 'test_yandex_disk/Taganrog_15'
-vis = Visualizer(root_folder + 'config/yolov3-mod.cfg', root_folder + 'epoch_40.weights',
-                 root_folder + 'config/classes.names', images_folder, 800, 500, 1024, 576)
+vis = Visualizer(root_folder + 'config/yolov4.cfg', root_folder + 'epoch_36.weights',
+                 root_folder + 'config/classes.names', images_folder, 900, 500, 1024, 576)
 vis.show()
 app.exec_()
