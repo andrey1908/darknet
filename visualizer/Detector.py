@@ -38,7 +38,7 @@ class Detector(QObject):
     def new_image(self, image_file):
         self.image_file = image_file
         self.image_pixmap = QPixmap(image_file)
-        self.lib.free_image(self.image_c)
+        lib.free_image(self.image_c)
         self.image_c = lib.load_image(image_file.encode(), 0, 0, lib.get_model_c(self.model))
         self.detect()
         self.draw()
@@ -90,4 +90,4 @@ class Detector(QObject):
         if hasattr(self, 'model'):
             free_model(self.model)
         if hasattr(self, 'image_c'):
-            self.lib.free_image(self.image_c)
+            lib.free_image(self.image_c)
