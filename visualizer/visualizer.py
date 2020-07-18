@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt
 from ImageSelector import ImageSelector
 from ThresholdSelector import ThresholdSelector
 from InputSizeSelector import InputSizeSelector
+from ImageScaleSelector import ImageScaleSelector
 from Viewer import Viewer
 from Detector import Detector
 import os
@@ -16,13 +17,16 @@ class Visualizer(QWidget):
         self.image_selector = ImageSelector(images_folder, show_delay=True)
         self.threshold_selector = ThresholdSelector(show_delay=True)
         self.input_size_selector = InputSizeSelector(input_base_width, input_base_height, show_delay=True)
+        self.image_scale_selector = ImageScaleSelector(show_delay=True)
         self.viewer = Viewer(window_width, window_height)
         self.detector = Detector(config_file, model_file, classes_file, self.image_selector.get_current_image_file(),
                                  self.threshold_selector.get_current_threshold(),
-                                 self.input_size_selector.get_current_input_size())
+                                 self.input_size_selector.get_current_input_size(),
+                                 self.image_scale_selector.get_current_image_scale())
         self.image_selector.imageChanged.connect(self.detector.new_image)
         self.threshold_selector.thresholdChanged.connect(self.detector.new_threshold)
         self.input_size_selector.inputSizeChanged.connect(self.detector.new_input_size)
+        self.image_scale_selector.imageScaleChanged.connect(self.detector.new_image_scale)
         self.detector.detectionsDrawn.connect(self.viewer.set_pixmap)
         self.init_UI()
         self.detector.detect()
@@ -36,6 +40,7 @@ class Visualizer(QWidget):
         hbox.addLayout(vbox)
         hbox.addWidget(self.threshold_selector)
         hbox.addWidget(self.input_size_selector)
+        hbox.addWidget(self.image_scale_selector)
         self.setLayout(hbox)
 
 

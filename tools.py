@@ -69,6 +69,19 @@ lib.resize_network.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 lib.load_image.restype = CImage
 lib.load_image.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
 
+lib.letterbox_image.restype = CImage
+lib.letterbox_image.argtypes = [CImage, ctypes.c_int, ctypes.c_int]
+
+lib.resize_image.restype = CImage
+lib.resize_image.argtypes = [CImage, ctypes.c_int, ctypes.c_int]
+
+lib.make_image.restype = CImage
+lib.make_image.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+
+lib.fill_image.argtypes = [CImage, ctypes.c_float]
+
+lib.embed_image.argtypes = [CImage, CImage, ctypes.c_int, ctypes.c_int]
+
 lib.free_image.argtypes = [CImage, ]
 
 

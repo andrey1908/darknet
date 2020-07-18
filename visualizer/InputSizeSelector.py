@@ -8,7 +8,7 @@ class InputSizeSelector(QGroupBox):
     inputSizeChanged = pyqtSignal(tuple)
 
     def __init__(self, base_width, base_height, show_delay=False):
-        super(InputSizeSelector, self).__init__('Input size selector')
+        super(InputSizeSelector, self).__init__('Input sizeTh   ')
         self.base_width = base_width
         self.base_height = base_height
         self.show_delay = show_delay
