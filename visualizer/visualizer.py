@@ -17,6 +17,7 @@ def build_parser():
     parser.add_argument('-model', '--model-file', required=True, type=str)
     parser.add_argument('-cls', '--classes-file', required=True, type=str)
     parser.add_argument('-img-fld', '--images-folder', required=True, type=str)
+    parser.add_argument('-img-file', '--images-file', type=str, default=None)
     parser.add_argument('-win-w', '--window-width', type=int, default=900)
     parser.add_argument('-win-h', '--window-height', type=int, default=500)
     parser.add_argument('-in-w', '--input-base-width', type=int, default=1024)
@@ -26,10 +27,10 @@ def build_parser():
 
 
 class Visualizer(QWidget):
-    def __init__(self, config_file, model_file, classes_file, images_folder, window_width=900, window_height=500,
+    def __init__(self, config_file, model_file, classes_file, images_folder, images_file, window_width=900, window_height=500,
                  input_base_width=1024, input_base_height=576):
         super(Visualizer, self).__init__()
-        self.image_selector = ImageSelector(images_folder, show_delay=True)
+        self.image_selector = ImageSelector(images_folder, images_file, show_delay=True)
         self.threshold_selector = ThresholdSelector(show_delay=True)
         self.input_size_selector = InputSizeSelector(input_base_width, input_base_height, show_delay=True)
         self.image_scale_selector = ImageScaleSelector(show_delay=True)
