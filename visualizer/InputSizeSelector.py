@@ -8,20 +8,19 @@ class InputSizeSelector(QGroupBox):
     inputSizeChanged = pyqtSignal(tuple)
 
     def __init__(self, base_width, base_height, show_delay=False):
-        super(InputSizeSelector, self).__init__('Input sizeTh   ')
+        super(InputSizeSelector, self).__init__('Input size')
         self.base_width = base_width
         self.base_height = base_height
         self.show_delay = show_delay
-        self.scale = None
+        self.scale = 1.
         self.init_UI()
         self.slider.valueChanged.connect(self.input_size_changed)
 
     def init_UI(self):
         self.slider = QSlider(Qt.Vertical)
-        self.slider.setMinimum(0)
-        self.slider.setMaximum(100)
-        self.slider.setValue(50)
-        self.scale = 1.
+        self.slider.setMaximum(200)
+        self.slider.setMinimum(25)
+        self.slider.setValue(100)
         self.label = QLabel()
         vbox = QVBoxLayout()
         vbox.addWidget(self.slider)
@@ -54,10 +53,7 @@ class InputSizeSelector(QGroupBox):
     def input_size_changed(self, new_value):
         if self.show_delay:
             start_time = time()
-        if new_value >= 50:
-            self.scale = (new_value - 50) / 50 + 1
-        else:
-            self.scale = new_value / 100 + 0.5
+        self.scale = new_value / 100
         self.refresh_UI()
         self.inputSizeChanged.emit(self.get_current_input_size())
         if self.show_delay:

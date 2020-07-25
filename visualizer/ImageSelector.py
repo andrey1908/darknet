@@ -13,11 +13,12 @@ class ImageSelector(QGroupBox):
         self.images_folder = images_folder
         self.show_delay = show_delay
         self.load_images()
-        self.current_image_idx = 0 if len(self.images_files) > 0 else None
+        self.images_number = len(self.images_files)
+        self.current_image_idx = 0 if self.images_number > 0 else None
         self.init_UI()
         self.prev_button.clicked.connect(self.go_to_prev_image)
         self.next_button.clicked.connect(self.go_to_next_image)
-        self.apply_button.clicked.connect(self.go_to_selected_image)
+        self.apply_image_file_button.clicked.connect(self.go_to_selected_image)
 
     def load_images(self):
         images_files = sorted(os.listdir(self.images_folder))
@@ -28,12 +29,12 @@ class ImageSelector(QGroupBox):
 
     def init_UI(self):
         self.images_number_label = QLabel()
-        self.images_number_label.setText('{} images'.format(len(self.images_files)))
+        self.images_number_label.setText('{} images'.format(self.images_number))
         self.prev_button = QPushButton('Prev')
         self.next_button = QPushButton('Next')
         self.current_image_idx_line_edit = QLineEdit()
         self.current_image_idx_line_edit.setValidator(QIntValidator())
-        self.apply_button = QPushButton('Apply')
+        self.apply_image_file_button = QPushButton('Apply')
         if self.show_delay:
             self.delay_label = QLabel()
             self.delay_label.setText('- ms')
@@ -42,7 +43,7 @@ class ImageSelector(QGroupBox):
         hbox.addWidget(self.prev_button)
         hbox.addWidget(self.next_button)
         hbox.addWidget(self.current_image_idx_line_edit)
-        hbox.addWidget(self.apply_button)
+        hbox.addWidget(self.apply_image_file_button)
         if self.show_delay:
             hbox.addWidget(self.delay_label)
         vbox = QVBoxLayout()
@@ -60,7 +61,7 @@ class ImageSelector(QGroupBox):
         if self.current_image_idx > 0:
             self.current_image_idx -= 1
         else:
-            self.current_image_idx = len(self.images_files) - 1
+            self.current_image_idx = self.images_number - 1
         self.refresh_UI()
         self.imageChanged.emit(self.images_files[self.current_image_idx])
         if self.show_delay:
@@ -70,7 +71,7 @@ class ImageSelector(QGroupBox):
     def go_to_next_image(self):
         if self.show_delay:
             start_time = time()
-        if self.current_image_idx + 1 < len(self.images_files):
+        if self.current_image_idx + 1 < self.images_number:
             self.current_image_idx += 1
         else:
             self.current_image_idx = 0
@@ -86,8 +87,8 @@ class ImageSelector(QGroupBox):
         self.current_image_idx = int(self.current_image_idx_line_edit.text())
         if self.current_image_idx < 0:
             self.current_image_idx = 0
-        if self.current_image_idx >= len(self.images_files):
-            self.current_image_idx = len(self.images_files) - 1
+        if self.current_image_idx >= self.images_number:
+            self.current_image_idx = self.images_number - 1
         self.refresh_UI()
         self.imageChanged.emit(self.images_files[self.current_image_idx])
         if self.show_delay:

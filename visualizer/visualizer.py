@@ -8,11 +8,26 @@ from ImageScaleSelector import ImageScaleSelector
 from Viewer import Viewer
 from Detector import Detector
 import os
+import argparse
+
+
+def build_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-cfg', '--config-file', required=True, type=str)
+    parser.add_argument('-model', '--model-file', required=True, type=str)
+    parser.add_argument('-cls', '--classes-file', required=True, type=str)
+    parser.add_argument('-img-fld', '--images-folder', required=True, type=str)
+    parser.add_argument('-win-w', '--window-width', type=int, default=900)
+    parser.add_argument('-win-h', '--window-height', type=int, default=500)
+    parser.add_argument('-in-w', '--input-base-width', type=int, default=1024)
+    parser.add_argument('-in-h', '--input-base-height', type=int, default=576)
+    parser.add_argument('-gpu', '--gpu', type=int, default=0)
+    return parser
 
 
 class Visualizer(QWidget):
-    def __init__(self, config_file, model_file, classes_file, images_folder, window_width, window_height,
-                 input_base_width, input_base_height):
+    def __init__(self, config_file, model_file, classes_file, images_folder, window_width=900, window_height=500,
+                 input_base_width=1024, input_base_height=576):
         super(Visualizer, self).__init__()
         self.image_selector = ImageSelector(images_folder, show_delay=True)
         self.threshold_selector = ThresholdSelector(show_delay=True)
@@ -27,10 +42,10 @@ class Visualizer(QWidget):
         self.threshold_selector.thresholdChanged.connect(self.detector.new_threshold)
         self.input_size_selector.inputSizeChanged.connect(self.detector.new_input_size)
         self.image_scale_selector.imageScaleChanged.connect(self.detector.new_image_scale)
-        self.detector.detectionsDrawn.connect(self.viewer.set_pixmap)
+        self.detector.detectionsDrawn.connect(self.viewer.set_scene)
         self.init_UI()
         self.detector.detect()
-        self.detector.draw()
+        self.detector.draw(reset_scale=True)
 
     def init_UI(self):
         vbox = QVBoxLayout()
@@ -44,12 +59,13 @@ class Visualizer(QWidget):
         self.setLayout(hbox)
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = str("0")
-app = QApplication([])
-root_folder = '/home/k_andrei/new_darknet/darknet/auto_labeled/vehicle+pedestrian+traffic_light+traffic_sign/yolov3-mod/'
-images_folder = '/home/k_andrei/new_darknet/darknet/auto_labeled/vehicle+pedestrian+traffic_light+traffic_sign/' \
-                'test_yandex_disk/Taganrog_15'
-vis = Visualizer(root_folder + 'config/yolov3-mod.cfg', root_folder + 'epoch_40.weights',
-                 root_folder + 'config/classes.names', images_folder, 900, 500, 1024, 576)
-vis.show()
-app.exec_()
+if __name__ == '__main__':
+    parser = build_parser()
+    args = parser.parse_args()
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
+    kwargs = vars(args)
+    kwargs.pop('gpu')
+    app = QApplication([])
+    vis = Visualizer(**kwargs)
+    vis.show()
+    app.exec_()
