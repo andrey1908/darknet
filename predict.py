@@ -27,7 +27,7 @@ def build_parser():
     parser.add_argument('-cls', '--classes-file', type=str)
     parser.add_argument('-thr', '--threshold', type=float, default=0.001)
     parser.add_argument('-max-dets', '--max-dets', type=int, default=1000, help='Maximum detections per image')
-    parser.add_argument('-nms', '--nms'. type=float, default=0.45)
+    parser.add_argument('-nms', '--nms', type=float, default=0.45)
     parser.add_argument('-is', '--input-shape', type=int, nargs=2, default=[None, None])
     parser.add_argument('-gpu', '--gpu', type=int, default=0)
     return parser
