@@ -17,7 +17,7 @@ def build_parser():
     parser.add_argument('-model', '--model-file', required=True, type=str)
     parser.add_argument('-cls', '--classes-file', required=True, type=str)
     parser.add_argument('-img-fld', '--images-folder', required=True, type=str)
-    parser.add_argument('-img-file', '--images-file', type=str, default=None)
+    parser.add_argument('-img', '--images-file', type=str, default=None)
     parser.add_argument('-win-w', '--window-width', type=int, default=900)
     parser.add_argument('-win-h', '--window-height', type=int, default=500)
     parser.add_argument('-in-w', '--input-base-width', type=int, default=1024)
