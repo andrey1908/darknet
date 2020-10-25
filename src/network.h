@@ -172,6 +172,11 @@ void randomize_network_recurrent_state(network net);
 void remember_network_recurrent_state(network net);
 void restore_network_recurrent_state(network net);
 
+void freeze_network(network net);
+void defrost_network(network net);
+void freeze_networks(network* nets, int ngpus);
+void defrost_networks(network* nets, int ngpus);
+
 #ifdef __cplusplus
 }
 #endif
