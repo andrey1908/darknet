@@ -171,8 +171,7 @@ def draw_detections(original_image, bboxes, scores, classes, class_names, thr=0.
         map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)),
             colors))
 
-    font = ImageFont.truetype(font='font/FiraMono-Medium.otf',
-                              size=np.floor(3e-2 * image.size[1] + 0.5).astype('int32'))
+    font = ImageFont.load_default()
     thickness = (image.size[0] + image.size[1]) // 300
 
     for i, c in reversed(list(enumerate(classes))):
@@ -207,7 +206,7 @@ def draw_detections(original_image, bboxes, scores, classes, class_names, thr=0.
         draw.rectangle(
             [tuple(text_origin), tuple(text_origin + label_size)],
             fill=colors[c])
-        draw.text(text_origin, label, fill=(0, 0, 0), font=font)
+        draw.text(tuple(text_origin), label, fill=(0, 0, 0), font=font)
         del draw
     return image
 

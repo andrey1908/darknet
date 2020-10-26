@@ -177,6 +177,23 @@ def detect_image(network, class_names, image, thresh=.5, hier_thresh=.5, nms=.45
     return sorted(predictions, key=lambda x: x[1])
 
 
+def detect_image_letterbox(network, class_names, image, thresh=.5, hier_thresh=.5, nms=.45):
+    """
+        Returns a list with highest confidence class and their bbox
+    """
+    pnum = pointer(c_int(0))
+    predict_image_letterbox(network, image)
+    detections = get_network_boxes(network, image.w, image.h,
+                                   thresh, hier_thresh, None, 0, pnum, 1)
+    num = pnum[0]
+    if nms:
+        do_nms_sort(detections, num, len(class_names), nms)
+    predictions = remove_negatives(detections, class_names, num)
+    predictions = decode_detection(predictions)
+    free_detections(detections, num)
+    return sorted(predictions, key=lambda x: x[1])
+
+
 #  lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
 #  lib = CDLL("libdarknet.so", RTLD_GLOBAL)
 hasGPU = True
@@ -219,7 +236,7 @@ if os.name == "nt":
             lib = CDLL(winGPUdll, RTLD_GLOBAL)
             print("Environment variables indicated a CPU run, but we didn't find {}. Trying a GPU run anyway.".format(winNoGPUdll))
 else:
-    lib = CDLL("./libdarknet.so", RTLD_GLOBAL)
+    lib = CDLL(os.path.join('./', os.path.dirname(__file__), 'libdarknet.so'), RTLD_GLOBAL)
 lib.network_width.argtypes = [c_void_p]
 lib.network_width.restype = c_int
 lib.network_height.argtypes = [c_void_p]
