@@ -195,7 +195,7 @@ def detect_image_resize(network, class_names, image, thresh=.5, hier_thresh=.5, 
     return sorted(predictions, key=lambda x: x[1])
 
 
-def detect_image_letterbox(network, image, thresh=.5, hier_thresh=.5, nms=.45, max_dets=1000):
+def detect_image_letterbox(network, image, thresh=.001, hier_thresh=.5, nms=.45, max_dets=1000):
     """
         Returns a list with highest confidence class and their bbox
     """
@@ -366,4 +366,14 @@ resize_network.argtypes = [c_void_p, c_int, c_int]
 get_network_classes_num_ptr = lib.get_network_classes_num_ptr
 get_network_classes_num_ptr.restype = c_int
 get_network_classes_num_ptr.argtypes = [c_void_p]
+
+resize_image = lib.resize_image
+resize_image.restype = IMAGE
+resize_image.argtypes = [IMAGE, c_int, c_int]
+
+fill_image = lib.fill_image
+fill_image.argtypes = [IMAGE, c_float]
+
+embed_image = lib.embed_image
+lib.embed_image.argtypes = [IMAGE, IMAGE, c_int, c_int]
 

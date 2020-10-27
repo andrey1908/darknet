@@ -1,6 +1,5 @@
 import argparse
 import os
-from tools import init_model, detect, free_model, resize_model
 from darknet import load_network, detect_image_letterbox, free_network_ptr, resize_network
 import json
 import xml.etree.ElementTree as xml
@@ -19,7 +18,7 @@ class Predictions:
 def build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-cfg', '--config-file', required=True, type=str)
-    parser.add_argument('-model', '--model-file', required=True, type=str)
+    parser.add_argument('-net', '--network-file', required=True, type=str)
     parser.add_argument('-img-fld', '--images-folder', required=True, type=str)
     parser.add_argument('-out', '--out-file', required=True, type=str)
     parser.add_argument('-to', '--predict-to', type=str, choices=['cvat', 'coco'], default='coco')
@@ -206,11 +205,11 @@ def add_predictions_to_coco(image_name, image_id, image_file, predictions, out_d
         out_data['annotations'].append(annotation)
 
 
-def do_predictions(model, images_names, images_ids, images_files, class_id_to_name, threshold=0.001, max_dets=1000,
+def do_predictions(network, images_names, images_ids, images_files, class_id_to_name, threshold=0.001, max_dets=1000,
                    nms=0.45, predict_to='cvat'):
     out_data = init_out_data(len(images_files), class_id_to_name, predict_to=predict_to)
     for image_name, image_id, image_file in tqdm(list(zip(images_names, images_ids, images_files))):
-        predictions = detect_image_letterbox(model, image_file, max_dets=max_dets, thresh=threshold, nms=nms)
+        predictions = detect_image_letterbox(network, image_file, max_dets=max_dets, thresh=threshold, nms=nms)
         add_predictions_to_out_data(image_name, image_id, image_file, predictions, out_data, class_id_to_name,
                                     predict_to=predict_to)
     return out_data
@@ -243,21 +242,21 @@ def my_round(a):
         return i + 1
 
 
-def predict(config_file, model_file, images_folder, out_file=None, predict_to='coco', detections_only=False,
+def predict(config_file, network_file, images_folder, out_file=None, predict_to='coco', detections_only=False,
             images_file=None, classes_file=None, threshold=0.001, max_dets=1000, nms=0.45, input_shape=(None, None)):
     if predict_to not in ('coco', 'cvat'):
         raise RuntimeError()
     if len(input_shape) != 2:
         raise RuntimeError()
-    model = load_network(config_file, None, model_file)
+    network = load_network(config_file, None, network_file)
     if input_shape[0] is not None:
         input_shape = tuple(map(lambda x: max(my_round(x/32) * 32, 32), input_shape))
-        resize_network(model, input_shape[0], input_shape[1])
+        resize_network(network, input_shape[0], input_shape[1])
     images_names, images_ids, images_files = get_images(images_folder, images_file=images_file)
     class_id_to_name = get_class_id_to_name(classes_file=classes_file)
-    out_data = do_predictions(model, images_names, images_ids, images_files, class_id_to_name, threshold=threshold,
+    out_data = do_predictions(network, images_names, images_ids, images_files, class_id_to_name, threshold=threshold,
                               max_dets=max_dets, nms=nms, predict_to=predict_to)
-    free_network_ptr(model)
+    free_network_ptr(network)
     if (predict_to == 'coco') and detections_only:
         out_data = out_data['annotations']
     if out_file:

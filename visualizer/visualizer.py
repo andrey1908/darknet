@@ -14,7 +14,7 @@ import argparse
 def build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-cfg', '--config-file', required=True, type=str)
-    parser.add_argument('-model', '--model-file', required=True, type=str)
+    parser.add_argument('-net', '--network-file', required=True, type=str)
     parser.add_argument('-cls', '--classes-file', required=True, type=str)
     parser.add_argument('-img-fld', '--images-folder', required=True, type=str)
     parser.add_argument('-img', '--images-file', type=str, default=None)
@@ -27,7 +27,7 @@ def build_parser():
 
 
 class Visualizer(QWidget):
-    def __init__(self, config_file, model_file, classes_file, images_folder, images_file, window_width=900, window_height=500,
+    def __init__(self, config_file, network_file, classes_file, images_folder, images_file, window_width=900, window_height=500,
                  input_base_width=1024, input_base_height=576):
         super(Visualizer, self).__init__()
         self.image_selector = ImageSelector(images_folder, images_file, show_delay=True)
@@ -35,7 +35,7 @@ class Visualizer(QWidget):
         self.input_size_selector = InputSizeSelector(input_base_width, input_base_height, show_delay=True)
         self.image_scale_selector = ImageScaleSelector(show_delay=True)
         self.viewer = Viewer(window_width, window_height)
-        self.detector = Detector(config_file, model_file, classes_file, self.image_selector.get_current_image_file(),
+        self.detector = Detector(config_file, network_file, classes_file, self.image_selector.get_current_image_file(),
                                  self.threshold_selector.get_current_threshold(),
                                  self.input_size_selector.get_current_input_size(),
                                  self.image_scale_selector.get_current_image_scale())

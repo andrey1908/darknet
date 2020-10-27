@@ -3,26 +3,26 @@ from PyQt5.QtWidgets import QLabel, QGroupBox, QHBoxLayout, QVBoxLayout, QGraphi
 from PyQt5.QtGui import QPixmap, QPainter, QPen, QFont
 from PyQt5.QtCore import Qt, QObject, pyqtSignal
 from numpy import clip
-from tools import init_model, free_model, resize_model, detect, lib
+from darknet import load_network, detect_image_letterbox, free_network_ptr, resize_network, load_image, make_image, resize_image, fill_image, embed_image, free_image
 from time import time
 
 
 class Detector(QObject):
     detectionsDrawn = pyqtSignal(QGraphicsScene, bool)
 
-    def __init__(self, config_file, model_file, classes_file, image_file, threshold, input_size, image_scale):
+    def __init__(self, config_file, network_file, classes_file, image_file, threshold, input_size, image_scale):
         super(Detector, self).__init__()
         self.config_file = config_file
-        self.model_file = model_file
+        self.network_file = network_file
         self.classes_file = classes_file
         self.classes_names = self.get_classes_names()
-        self.model = init_model(config_file, model_file)
-        resize_model(self.model, input_size[0], input_size[1])
+        self.network = load_network(config_file, None, network_file)
+        resize_network(self.network, input_size[0], input_size[1])
 
         self.bboxes, self.scores, self.classes = None, None, None
         self.image_file = image_file
         self.pixmap_item = QGraphicsPixmapItem(QPixmap(image_file))
-        self.image_c = lib.load_image(image_file.encode(), 0, 0, lib.get_model_c(self.model))
+        self.image_c = load_image(image_file.encode(), 0, 0)
         self.threshold = threshold
         self.input_size = input_size
         self.image_scale = image_scale
@@ -37,11 +37,11 @@ class Detector(QObject):
             return None
         w, h = self.image_c.w, self.image_c.h
         new_w, new_h = int(w * self.image_scale), int(h * self.image_scale)
-        resized = lib.resize_image(self.image_c, new_w, new_h)
-        boxed = lib.make_image(w, h, self.image_c.c)
-        lib.fill_image(boxed, 0.5)
-        lib.embed_image(resized, boxed, int((w - new_w) / 2), int((h - new_h) / 2))
-        lib.free_image(resized)
+        resized = resize_image(self.image_c, new_w, new_h)
+        boxed = make_image(w, h, self.image_c.c)
+        fill_image(boxed, 0.5)
+        embed_image(resized, boxed, int((w - new_w) / 2), int((h - new_h) / 2))
+        free_image(resized)
         #print((time() - start_time) * 1000)
         return boxed
 
@@ -56,10 +56,10 @@ class Detector(QObject):
     def new_image(self, image_file):
         self.image_file = image_file
         self.pixmap_item = QGraphicsPixmapItem(QPixmap(image_file))
-        lib.free_image(self.image_c)
+        free_image(self.image_c)
         if self.image_c_scaled is not None:
-            lib.free_image(self.image_c_scaled)
-        self.image_c = lib.load_image(image_file.encode(), 0, 0, lib.get_model_c(self.model))
+            free_image(self.image_c_scaled)
+        self.image_c = load_image(image_file.encode(), 0, 0)
         self.image_c_scaled = self.get_scaled_image()
         self.detect()
         self.draw(reset_scale=True)
@@ -70,14 +70,14 @@ class Detector(QObject):
 
     def new_input_size(self, input_size):
         self.input_size = input_size
-        resize_model(self.model, input_size[0], input_size[1])
+        resize_network(self.network, input_size[0], input_size[1])
         self.detect()
         self.draw(reset_scale=False)
 
     def new_image_scale(self, image_scale):
         self.image_scale = image_scale
         if self.image_c_scaled is not None:
-            lib.free_image(self.image_c_scaled)
+            free_image(self.image_c_scaled)
         self.image_c_scaled = self.get_scaled_image()
         self.detect()
         self.draw(reset_scale=False)
@@ -87,9 +87,14 @@ class Detector(QObject):
             image = self.image_c
         else:
             image = self.image_c_scaled
-        self.bboxes, self.scores, self.classes = detect(self.model, image, max_dets=100)
-        for bbox, score, cl in zip(self.bboxes, self.scores, self.classes):
+        predictions = detect_image_letterbox(self.network, image, max_dets=100)
+        self.classes, self.scores, self.bboxes = list(), list(), list()
+        for cl, score, bbox in predictions:
+            bbox = [bbox[0] - bbox[2]/2, bbox[1] - bbox[3]/2, bbox[0] + bbox[2]/2, bbox[1] + bbox[3]/2]
             self.preprocess_box(bbox, self.pixmap_item.pixmap().width(), self.pixmap_item.pixmap().height())
+            self.classes.append(cl)
+            self.scores.append(score)
+            self.bboxes.append(bbox)
 
     def draw(self, reset_scale):
         scene = QGraphicsScene()
@@ -129,10 +134,10 @@ class Detector(QObject):
         return x, y
 
     def __del__(self):
-        if hasattr(self, 'model'):
-            free_model(self.model)
+        if hasattr(self, 'network'):
+            free_network_ptr(self.network)
         if hasattr(self, 'image_c'):
-            lib.free_image(self.image_c)
+            free_image(self.image_c)
         if hasattr(self, 'image_c_scaled'):
             if self.image_c_scaled is not None:
-                lib.free_image(self.image_c_scaled)
+                free_image(self.image_c_scaled)
