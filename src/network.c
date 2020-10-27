@@ -1530,3 +1530,8 @@ void defrost_networks(network* nets, int ngpus)
         }
     }
 }
+
+int get_network_classes_num_ptr(network* net)
+{
+    return net->layers[net->n-1].classes;
+}

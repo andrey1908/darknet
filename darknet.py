@@ -112,9 +112,12 @@ def load_network(config_file, data_file, weights, batch_size=1):
     network = load_net_custom(
         config_file.encode("ascii"),
         weights.encode("ascii"), 0, batch_size)
-    metadata = load_meta(data_file.encode("ascii"))
-    class_names = [metadata.names[i].decode("ascii") for i in range(metadata.classes)]
-    colors = class_colors(class_names)
+    if data_file:
+        metadata = load_meta(data_file.encode("ascii"))
+        class_names = [metadata.names[i].decode("ascii") for i in range(metadata.classes)]
+        colors = class_colors(class_names)
+    else:
+        return network
     return network, class_names, colors
 
 
@@ -161,7 +164,21 @@ def remove_negatives(detections, class_names, num):
     return predictions
 
 
-def detect_image(network, class_names, image, thresh=.5, hier_thresh=.5, nms=.45):
+def remove_negatives_num(detections, classes_num, num):
+    """
+    Remove all classes with 0% confidence within the detection
+    """
+    predictions = []
+    for j in range(num):
+        for class_id in range(classes_num):
+            if detections[j].prob[class_id] > 0:
+                bbox = detections[j].bbox
+                bbox = (bbox.x, bbox.y, bbox.w, bbox.h)
+                predictions.append((class_id, detections[j].prob[class_id], (bbox)))
+    return predictions
+
+
+def detect_image_resize(network, class_names, image, thresh=.5, hier_thresh=.5, nms=.45):
     """
         Returns a list with highest confidence class and their bbox
     """
@@ -178,21 +195,31 @@ def detect_image(network, class_names, image, thresh=.5, hier_thresh=.5, nms=.45
     return sorted(predictions, key=lambda x: x[1])
 
 
-def detect_image_letterbox(network, class_names, image, thresh=.5, hier_thresh=.5, nms=.45):
+def detect_image_letterbox(network, image, thresh=.5, hier_thresh=.5, nms=.45, max_dets=1000):
     """
         Returns a list with highest confidence class and their bbox
     """
+    b_free_image = False
+    if isinstance(image, str):
+        b_free_image = True
+        image = load_image(image.encode(), 0, 0)
     pnum = pointer(c_int(0))
     predict_image_letterbox(network, image)
     detections = get_network_boxes(network, image.w, image.h,
                                    thresh, hier_thresh, None, 0, pnum, 1)
     num = pnum[0]
+    classes_num = get_network_classes_num_ptr(network)
     if nms:
-        do_nms_sort(detections, num, len(class_names), nms)
-    predictions = remove_negatives(detections, class_names, num)
-    predictions = decode_detection(predictions)
+        do_nms_sort(detections, num, classes_num, nms)
+    predictions = remove_negatives_num(detections, classes_num, num)
+    # predictions = decode_detection(predictions)
     free_detections(detections, num)
-    return sorted(predictions, key=lambda x: x[1])
+    if b_free_image:
+        free_image(image)
+    predictions = sorted(predictions, key=lambda x: x[1])
+    if len(predictions) > max_dets:
+        predictions = predictions[len(predictions)-max_dets:]
+    return predictions
 
 
 #  lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
@@ -331,3 +358,12 @@ network_predict_batch = lib.network_predict_batch
 network_predict_batch.argtypes = [c_void_p, IMAGE, c_int, c_int, c_int,
                                    c_float, c_float, POINTER(c_int), c_int, c_int]
 network_predict_batch.restype = POINTER(DETNUMPAIR)
+
+resize_network = lib.resize_network
+resize_network.restype = c_int
+resize_network.argtypes = [c_void_p, c_int, c_int]
+
+get_network_classes_num_ptr = lib.get_network_classes_num_ptr
+get_network_classes_num_ptr.restype = c_int
+get_network_classes_num_ptr.argtypes = [c_void_p]
+

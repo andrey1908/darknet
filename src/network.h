@@ -176,6 +176,7 @@ void freeze_network(network net);
 void defrost_network(network net);
 void freeze_networks(network* nets, int ngpus);
 void defrost_networks(network* nets, int ngpus);
+int get_network_classes_num_ptr(network* net);
 
 #ifdef __cplusplus
 }
