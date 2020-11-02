@@ -1,6 +1,6 @@
 import argparse
 import os
-from darknet import load_network, detect_image_letterbox, free_network_ptr, resize_network
+from darknet import load_network, detect_image_letterbox, free_network_ptr, resize_network, get_class_id_to_name, load_image, free_image
 import json
 import xml.etree.ElementTree as xml
 from xml.dom import minidom
@@ -79,39 +79,6 @@ def get_images_from_list(images_folder, list_file):
     return images_names, images_ids, images_files
 
 
-def get_class_id_to_name(classes_file=None):
-    if classes_file is None:
-        return None
-    if classes_file.endswith('.json'):
-        return get_class_id_to_name_from_json(classes_file)
-    if classes_file.endswith('.names'):
-        return get_class_id_to_name_from_list(classes_file)
-    return None
-
-
-def get_class_id_to_name_from_json(json_file):
-    with open(json_file, 'r') as f:
-        json_dict = json.load(f)
-    categories = json_dict['categories']
-    class_id_to_name = dict()
-    for category in categories:
-        class_id_to_name[category['id']-1] = category['name']
-    return class_id_to_name
-
-
-def get_class_id_to_name_from_list(list_file):
-    class_id_to_name = dict()
-    class_id = 0
-    with open(list_file, 'r') as f:
-        classes_names = f.readlines()
-    for class_name in classes_names:
-        if class_name[-1] == '\n':
-            class_name = class_name[:-1]
-        class_id_to_name[class_id] = class_name
-        class_id += 1
-    return class_id_to_name
-
-
 def init_out_data(images_num, class_id_to_name, predict_to='coco'):
     if predict_to == 'cvat':
         return init_cvat(images_num, class_id_to_name)
@@ -145,20 +112,19 @@ def init_coco(class_id_to_name):
     return json_dict
 
 
-def add_predictions_to_out_data(image_name, image_id, image_file, predictions, out_data, class_id_to_name, predict_to='coco'):
+def add_predictions_to_out_data(image_name, image_id, width, height, predictions, out_data, class_id_to_name, predict_to='coco'):
     if predict_to == 'cvat':
-        return add_predictions_to_cvat(image_name, image_id, image_file, predictions, class_id_to_name, out_data)
+        return add_predictions_to_cvat(image_name, image_id, width, height, predictions, class_id_to_name, out_data)
     if predict_to == 'coco':
-        return add_predictions_to_coco(image_name, image_id, image_file, predictions, out_data)
+        return add_predictions_to_coco(image_name, image_id, width, height, predictions, out_data)
 
 
-def add_predictions_to_cvat(image_name, image_id, image_file, predictions, class_id_to_name, out_data):
+def add_predictions_to_cvat(image_name, image_id, width, height, predictions, class_id_to_name, out_data):
     image = dict()
     image['id'] = str(image_id)
     image['name'] = image_name
-    w, h = Image.open(image_file).size
-    image['width'] = str(w)
-    image['height'] = str(h)
+    image['width'] = str(width)
+    image['height'] = str(height)
     xml_image = xml.SubElement(out_data, "image", image)
 
     for cl, score, bbox in predictions:
@@ -167,8 +133,8 @@ def add_predictions_to_cvat(image_name, image_id, image_file, predictions, class
         image_bbox['occluded'] = '0'
         left = max(bbox[0] - bbox[2] / 2, 0)
         top = max(bbox[1] - bbox[3] / 2, 0)
-        right = min(bbox[0] + bbox[2] / 2, w)
-        bottom = min(bbox[1] + bbox[3] / 2, h)
+        right = min(bbox[0] + bbox[2] / 2, width)
+        bottom = min(bbox[1] + bbox[3] / 2, height)
         image_bbox['xtl'] = left
         image_bbox['ytl'] = top
         image_bbox['xbr'] = right
@@ -177,13 +143,12 @@ def add_predictions_to_cvat(image_name, image_id, image_file, predictions, class
         xml.SubElement(xml_image, "box", image_bbox)
 
 
-def add_predictions_to_coco(image_name, image_id, image_file, predictions, out_data):
+def add_predictions_to_coco(image_name, image_id, width, height, predictions, out_data):
     image = dict()
     image['id'] = image_id
     image['file_name'] = image_name
-    w, h = Image.open(image_file).size
-    image['width'] = w
-    image['height'] = h
+    image['width'] = width
+    image['height'] = height
     out_data['images'].append(image)
 
     for cl, score, bbox in predictions:
@@ -197,8 +162,8 @@ def add_predictions_to_coco(image_name, image_id, image_file, predictions, out_d
         annotation['category_id'] = cl + 1
         left = max(bbox[0] - bbox[2] / 2, 0)
         top = max(bbox[1] - bbox[3] / 2, 0)
-        right = min(bbox[0] + bbox[2] / 2, w)
-        bottom = min(bbox[1] + bbox[3] / 2, h)
+        right = min(bbox[0] + bbox[2] / 2, width)
+        bottom = min(bbox[1] + bbox[3] / 2, height)
         annotation['bbox'] = [left, top, right - left, bottom - top]
         annotation['area'] = annotation['bbox'][2] * annotation['bbox'][3]
         annotation['score'] = score
@@ -209,8 +174,11 @@ def do_predictions(network, images_names, images_ids, images_files, class_id_to_
                    nms=0.45, predict_to='cvat'):
     out_data = init_out_data(len(images_files), class_id_to_name, predict_to=predict_to)
     for image_name, image_id, image_file in tqdm(list(zip(images_names, images_ids, images_files))):
+        image = load_image(image_file.encode(), 0, 0)
         predictions = detect_image_letterbox(network, image_file, max_dets=max_dets, thresh=threshold, nms=nms)
-        add_predictions_to_out_data(image_name, image_id, image_file, predictions, out_data, class_id_to_name,
+        width, height = int(image.w), int(image.h)
+        free_image(image)
+        add_predictions_to_out_data(image_name, image_id, width, height, predictions, out_data, class_id_to_name,
                                     predict_to=predict_to)
     return out_data
 
@@ -234,14 +202,6 @@ def save_predictions_to_coco(out_file, out_data):
         json.dump(out_data, f, indent=2)
 
 
-def my_round(a):
-    i = int(a)
-    if a - i < 0.5:
-        return i
-    else:
-        return i + 1
-
-
 def predict(config_file, network_file, images_folder, out_file=None, predict_to='coco', detections_only=False,
             images_file=None, classes_file=None, threshold=0.001, max_dets=1000, nms=0.45, input_shape=(None, None)):
     if predict_to not in ('coco', 'cvat'):
@@ -250,7 +210,7 @@ def predict(config_file, network_file, images_folder, out_file=None, predict_to=
         raise RuntimeError()
     network = load_network(config_file, None, network_file)
     if input_shape[0] is not None:
-        input_shape = tuple(map(lambda x: max(my_round(x/32) * 32, 32), input_shape))
+        input_shape = tuple(map(lambda x: max(round(x/32) * 32, 32), input_shape))
         resize_network(network, input_shape[0], input_shape[1])
     images_names, images_ids, images_files = get_images(images_folder, images_file=images_file)
     class_id_to_name = get_class_id_to_name(classes_file=classes_file)

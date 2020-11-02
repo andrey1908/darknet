@@ -25,6 +25,8 @@ from ctypes import *
 import math
 import random
 import os
+import argparse
+import cv2
 
 
 class BOX(Structure):
@@ -63,6 +65,20 @@ class IMAGE(Structure):
 class METADATA(Structure):
     _fields_ = [("classes", c_int),
                 ("names", POINTER(c_char_p))]
+
+
+def build_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-cfg', '--config-file', required=True, type=str)
+    parser.add_argument('-net', '--network-file', required=True, type=str)
+    parser.add_argument('-cls', '--classes-file', required=True, type=str)
+    parser.add_argument('-img', '--image-file', required=True, type=str)
+    parser.add_argument('-out', '--out-file', type=str)
+    parser.add_argument('-thr', '--threshold', type=float, default=0.3)
+    parser.add_argument('-nms', '--nms', type=float, default=0.45)
+    parser.add_argument('-is', '--input-shape', type=int, nargs=2, default=[None, None])
+    parser.add_argument('-gpu', '--gpu', type=int, default=0)
+    return parser
 
 
 def network_width(net):
@@ -132,7 +148,6 @@ def print_detections(detections, coordinates=False):
 
 
 def draw_boxes(detections, image, colors):
-    import cv2
     for label, confidence, bbox in detections:
         left, top, right, bottom = bbox2points(bbox)
         cv2.rectangle(image, (left, top), (right, bottom), colors[label], 1)
@@ -220,6 +235,39 @@ def detect_image_letterbox(network, image, thresh=.001, hier_thresh=.5, nms=.45,
     if len(predictions) > max_dets:
         predictions = predictions[len(predictions)-max_dets:]
     return predictions
+
+
+def get_class_id_to_name(classes_file=None):
+    if classes_file is None:
+        return None
+    if classes_file.endswith('.json'):
+        return get_class_id_to_name_from_json(classes_file)
+    if classes_file.endswith('.names'):
+        return get_class_id_to_name_from_list(classes_file)
+    return None
+
+
+def get_class_id_to_name_from_json(json_file):
+    with open(json_file, 'r') as f:
+        json_dict = json.load(f)
+    categories = json_dict['categories']
+    class_id_to_name = dict()
+    for category in categories:
+        class_id_to_name[category['id']-1] = category['name']
+    return class_id_to_name
+
+
+def get_class_id_to_name_from_list(list_file):
+    class_id_to_name = dict()
+    class_id = 0
+    with open(list_file, 'r') as f:
+        classes_names = f.readlines()
+    for class_name in classes_names:
+        if class_name[-1] == '\n':
+            class_name = class_name[:-1]
+        class_id_to_name[class_id] = class_name
+        class_id += 1
+    return class_id_to_name
 
 
 #  lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
@@ -376,4 +424,26 @@ fill_image.argtypes = [IMAGE, c_float]
 
 embed_image = lib.embed_image
 lib.embed_image.argtypes = [IMAGE, IMAGE, c_int, c_int]
+
+
+if __name__ == '__main__':
+    parser = build_parser()
+    args = parser.parse_args()
+    class_id_to_name = get_class_id_to_name(args.classes_file)
+    network = load_network(args.config_file, None, args.network_file)
+    if args.input_shape[0] is not None:
+        input_shape = tuple(map(lambda x: max(round(x/32) * 32, 32), args.input_shape))
+        resize_network(network, input_shape[0], input_shape[1])
+    predictions = detect_image_letterbox(network, args.image_file, thresh=args.threshold, nms=args.nms)
+    predictions_with_names = list()
+    for prediction in predictions:
+        predictions_with_names.append((class_id_to_name[prediction[0]], prediction[1], prediction[2]))
+    colors = class_colors(class_id_to_name.values())
+    image = cv2.imread(args.image_file)
+    draw_boxes(predictions_with_names, image, colors)
+    if args.out_file:
+        cv2.imwrite(args.out_file, image)
+    cv2.imshow('detections', image)
+    cv2.waitKey(0)
+    free_network_ptr(network)
 
